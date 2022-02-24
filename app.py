@@ -1,8 +1,26 @@
+import dash
 from dash import Dash, html, dcc, Input, Output, dash_table, State
 import plotly.express as px
 import pandas as pd
+from flask_sqlalchemy import SQLAlchemy
+from flask import Flask
 
-app = Dash(__name__)
+server = Flask(__name__)
+app = dash.Dash(__name__, server=server)
+app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.server.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://master:password@localhost/gradetrack"
+
+db = SQLAlchemy(app.server)
+
+class School(db.Model):
+    __tablename__ = "school"
+
+    schoolId = db.Column(db.String(40), nullable=False, primary_key=True)
+    schoolName = db.Column(db.String(40), nullable=False)
+
+    def __init__(self, schoolId, name):
+        self.schoolId = schoolId
+        self.schoolName = name
 
 colors = {
     'background': '#111111',
@@ -71,6 +89,9 @@ app.layout = html.Div([
         style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
         ),
 
+    dcc.Interval(id='interval_pg', interval=99999999*7, n_intervals=0),
+    html.Div(id='postgres_datatable', children=[]),
+
     dcc.Graph(id="graph")
 ])
 
@@ -137,6 +158,20 @@ def add_rows(n_clicks, data, columns, schoolInput, courseInput, gradeInput):
     return data
 
 @app.callback(
+    Output("store", "data"),
+    Input("Add mark button", "n_clicks"),
+    [State("our-table","data"),
+     State("store","data")]
+)
+def save_df(n_clicks, dataset, s):
+    input_triggered = dash.callback_context.triggered[0]["prop_id"].split(".")[0]
+    if n_clicks > 0:
+        s = 6
+        pg = pd.DataFrame(dataset)
+        pg.to_sql("school", con=db.engine, if_exists='replace', index=False)
+        return s
+
+@app.callback(
     Output("graph", "figure"),
     [Input("Grades Table", "data")])
 def display_graph(data):
@@ -145,14 +180,35 @@ def display_graph(data):
     return fig
 
 @app.callback(
-    Output("schoolInput", "value"),
-    # Output("courseInput", "value"),
-    # Output("gradeInput", "value"),
-    Input("Clear input button", "n_clicks")
-)
-def clearInput(n_clicks):
-    if n_clicks > 0:
-        return tuple("")
+    Output('postgres_datatable', 'children'),
+    [Input('interval_pg', 'n_intervals')])
+def populate_datatable(n_intervals):
+    df = pd.read_sql_table('school', con=db.engine)
+    return [
+        dash_table.DataTable(
+            id="our_table",
+            columns=[{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns],
+            data=df.to_dict('records'),
+            editable=True,
+            row_deletable=False,
+            sort_action="native",
+            sort_mode="multi",
+            filter_action="native",
+            page_action="none",
+            style_table={"height": "300px", "overflowY": "auto"},
+            style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
+        ),
+    ]
+
+# @app.callback(
+#     Output("schoolInput", "value"),
+#     # Output("courseInput", "value"),
+#     # Output("gradeInput", "value"),
+#     Input("Clear input button", "n_clicks")
+# )
+# def clearInput(n_clicks):
+#     if n_clicks > 0:
+#         return tuple("")
 
 if __name__ == '__main__':
     app.run_server(debug=True)
