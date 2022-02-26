@@ -9,7 +9,6 @@ import re
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
 app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-#SQLALCHEMY DATABASE URI CONFIGURATION HERE
 
 db = SQLAlchemy(app.server)
 
@@ -19,16 +18,6 @@ class School(db.Model):
     id = db.Column(db.Integer, nullable=False, primary_key=True)
     name = db.Column(db.String(40), nullable=False)
     courses = db.relationship("Course", backref='school')
-    schoolList = []
-
-    def __init__(self):
-        self.schoolList.append(self.name)
-
-    def exists(self):
-        if self.name in self.schoolList:
-            return self.id
-        else:
-            return False
 
 class Course(db.Model):
     __tablename__ = "course"
@@ -38,17 +27,6 @@ class Course(db.Model):
     yearLevel = db.Column(db.Integer, nullable=False)
     schoolID = db.Column(db.Integer, db.ForeignKey("school.id"), nullable=False)
     marks = db.relationship("Mark", backref='course')
-    courseList = {}
-
-    def __init__(self):
-        self.courseList[self.courseCode] = self.schoolID;
-
-    def exists(self):
-        if self.courseCode in self.courseList:
-            if self.courseList[self.courseCode] == self.schoolID:
-                return self.id
-        else:
-            return False
 
 class Mark(db.Model):
     __tablename__ = "mark"
@@ -58,7 +36,6 @@ class Mark(db.Model):
     courseID = db.Column(db.Integer, db.ForeignKey("course.id"), nullable=False)
 
 # db.create_all()
-#
 # western = School(name="Western University")
 # course = Course(courseCode="CS1026", yearLevel=1, schoolID=1)
 # course2 = Course(courseCode="CS1027", yearLevel=1, schoolID=1)
@@ -68,7 +45,6 @@ class Mark(db.Model):
 # mark4 = Mark(mark=50, courseID=2)
 # mark5 = Mark(mark=99, courseID=2)
 # mark6 = Mark(mark=78, courseID=2)
-#
 # db.session.add(western)
 # db.session.add(course)
 # db.session.add(course2)
@@ -78,7 +54,6 @@ class Mark(db.Model):
 # db.session.add(mark4)
 # db.session.add(mark5)
 # db.session.add(mark6)
-#
 # db.session.commit()
 
 colors = {
@@ -213,28 +188,32 @@ def populate_datatable(n_intervals):
     Input("gradeInput", "value"),
 )
 def add_rows(n_clicks, data, columns, schoolInput, courseInput, gradeInput):
-    school = School(name=schoolInput)
-    if school.exists():
-        tempSchoolID = school.exists()
-        del school
-    else:
-        tempSchoolID = school.id
-        db.session.add(school)
+    if n_clicks>0:
+        schoolExists = db.session.query(School.id).filter_by(name=schoolInput).first()
+        if schoolExists != None:
+            print(schoolExists)
+            tempSchoolID = schoolExists.id
+        else:
+            print("school doesnt exist")
+            school = School(name=schoolInput)
+            tempSchoolID = school.id
+        #     #db.session.add(school)
 
-    course = Course(courseCode=courseInput, yearLevel=courseInput[re.search(r'\d+', courseInput).group()], schoolID=tempSchoolID)
-    if course.exists():
-        tempCourseID = course.exists()
-        del course
-    else:
-        tempCourseID = course.id
-        db.session.add(course)
+        #how tf do i do this query
+        courseExists = db.session.query(Course.id).join(School,School.id==Course.id).filter_by(Course.courseCode==courseInput).filter_by(School.id==tempSchoolID).first()
+        if courseExists != None:
+            print(courseExists)
+            tempCourseID = courseExists.id
+        else:
+            print("course doesn't exist")
+            course = Course(courseCode=courseInput, yearLevel=courseInput[re.search(r'\d+', courseInput).group()], schoolID=tempSchoolID)
+            tempCourseID = course.id
+            #db.session.add(course)
 
-    mark = Mark(mark=gradeInput, courseID=tempCourseID)
-    db.session.add(mark)
+        mark = Mark(mark=gradeInput, courseID=tempCourseID)
+        # db.session.add(mark)
+        # db.session.commit()
 
-    db.session.commit()
-
-    if n_clicks > 0:
         data.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput})
     return data
 
@@ -243,9 +222,8 @@ def add_rows(n_clicks, data, columns, schoolInput, courseInput, gradeInput):
     [Input("table", "data")])
 def display_graph(data):
     df = pd.DataFrame(data)
-    print(df)
     #df.columns = ['name', 'courseCode', 'mark']
-    fig = px.box(df, x="courseCode", y="mark")
+    fig = px.box(df, x="courseCode", y="mark", labels={"courseCode": "Course Code", "mark": "Final Mark"})
     return fig
 
 # @app.callback(
