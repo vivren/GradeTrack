@@ -4,7 +4,10 @@ import plotly.express as px
 import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
+import dash_bootstrap_components as dbc
 import re
+
+from western import western_layout
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
@@ -99,13 +102,34 @@ class Mark(db.Model):
 # db.session.add(mark9)
 
 #db.session.commit()
+data = db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all()
+df = pd.DataFrame(data)
 
 colors = {
     'background': '#111111',
     'text': '#7FDBFF'
 }
 
+app_tabs = html.Div(
+    [
+        dbc.Tabs(
+            [
+                dbc.Tab(label="Western", tab_id="tab-western", labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger"),
+                dbc.Tab(label="Waterloo", tab_id="tab-waterloo", labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger"),
+                dbc.Tab(label="Queens", tab_id="tab-queens", labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger"),
+            ],
+            id="tabs",
+            active_tab="tab-mentions",
+        ),
+    ], className="mt-3"
+)
+
 app.layout = html.Div([
+    dbc.Row(dbc.Col(html.H1("GradeTrack", style={"textAlign": "center"}), width=12)),
+    html.Hr(),
+    dbc.Row(dbc.Col(app_tabs, width=12), className="mb-3"),
+    html.Div(id='content', children=[]),
+
     html.Div(style={'backgroundColor': colors['background']}, children=[
         html.H1(
             children='GradeTrack',
@@ -114,7 +138,6 @@ app.layout = html.Div([
                 'color': colors['text']
             })
     ]),
-
     html.Div(children="View Your School Course Averages", style={
         'textAlign': 'center',
         'color': colors['text']
@@ -151,48 +174,12 @@ app.layout = html.Div([
         html.Button("Add Mark", id="Add mark button", n_clicks=0),
 
         html.Button("Clear Input", id="Clear input button", n_clicks=0)],
-        #style={"height": 50, "left": "50%", "right": "50%"}
+        style={'backgroundColor': colors['background']}
         ),
 
     dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
-    html.Div(id='gradesTable', children=[]),
-
-    dcc.Graph(id="graph")
-])
-
-#
-#     html.Br(),
-#     html.Label('Radio Items'),
-#     dcc.RadioItems(['New York City', 'Montréal', 'San Francisco'], 'Montréal'),
-# ], style={'padding': 10, 'flex': 1}),
-
-# html.Div(children=[
-#     html.Label('Checkboxes'),
-#     dcc.Checklist(['New York City', 'Montréal', 'San Francisco'],
-#                   ['Montréal', 'San Francisco']
-#     ),
-#
-#     html.Br(),
-#     html.Label('Slider'),
-#     dcc.Slider(
-#         min=0,
-#         max=9,
-#         marks={i: f'Label {i}' if i == 1 else str(i) for i in range(1, 6)},
-#         value=5,
-#     ),
-# ], style={'padding': 10, 'flex': 1}),
-
-@app.callback(
-    Output('gradesTable', 'children'),
-    [Input('interval_pg', 'n_intervals')])
-def populate_datatable(n_intervals):
-    data = db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(
-        Mark, Mark.courseID == Course.id).all()
-    # df = pd.read_sql('data', con=db.engine)
-    df = pd.DataFrame(data)
-
-    return [
-        dash_table.DataTable(
+    html.Div(id='gradesTable', children=[
+            dash_table.DataTable(
             id="table",
             columns=[{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns],
             data=df.to_dict('records'),
@@ -203,7 +190,30 @@ def populate_datatable(n_intervals):
             style_table={"height": "300px", "overflowY": "auto"},
             style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
         ),
-    ]
+    ]),
+    dcc.Graph(id="graph")
+])
+
+# @app.callback(
+#     Output('gradesTable', 'children'),
+#     [Input('interval_pg', 'n_intervals')])
+# def populate_datatable(n_intervals):
+#     data = db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all()
+#     df = pd.DataFrame(data)
+#
+#     return [
+#         dash_table.DataTable(
+#             id="table",
+#             columns=[{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns],
+#             data=df.to_dict('records'),
+#             row_deletable=False,
+#             sort_action="native",
+#             sort_mode="multi",
+#             page_action="none",
+#             style_table={"height": "300px", "overflowY": "auto"},
+#             style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
+#         ),
+#     ]
 
 
 @app.callback(
@@ -257,6 +267,19 @@ def display_graph(data):
 # def clearInput(n_clicks):
 #     if n_clicks > 0:
 #         return tuple("")
+
+@app.callback(
+    Output("content", "children"),
+    [Input("tabs", "active_tab")]
+)
+def switch_tab(tab_chosen):
+    if tab_chosen == "tab-western":
+        return western_layout
+    # elif tab_chosen == "tab-waterloo":
+    #     return waterloo_layout
+    # elif tab_chosen == "tab-queens":
+    #     return queens_layout
+    return html.P("This shouldn't be displayed for now...")
 
 if __name__ == '__main__':
     app.run_server(debug=True)
