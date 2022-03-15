@@ -86,7 +86,7 @@ home_layout = html.Div([
 
     dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
     html.Div(id='gradesTable', children=[
-            dash_table.DataTable(
+        dash_table.DataTable(
             id="table",
             columns=[{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns],
             data=df.to_dict('records'),

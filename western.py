@@ -58,6 +58,25 @@ western_layout = html.Div([
     ]),
 
     html.Div([
+        html.H3(
+            children="Filter Data",
+        ),
+
+        dcc.Checklist(["1st Year", "2nd Year", "3rd Year", "4th Year"], id="courseYearFilter"),
+
+        dcc.Dropdown(["course 1", "course2"], id="courseNaeFilter", multi=True),
+
+        html.Button("Filter Courses", id="filterButton", n_clicks=0)
+    ]),
+
+
+    html.Div([
+        html.H3(
+            children="Add Mark"
+        ),
+
+        html.Div(id="schoolInput"),
+
         dcc.Input(
             id="courseInput",
             placeholder="Enter course code",
@@ -92,7 +111,10 @@ western_layout = html.Div([
             style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
         ),
     ]),
-    dcc.Graph(id="graph")
+    dcc.Graph(id="graph"),
+
+    html.Div()
+
 ])
 
 # @app.callback(

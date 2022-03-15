@@ -94,6 +94,16 @@ app.layout = html.Div([
     html.Div(id='content', children=[]),
     ], style={'backgroundColor': colors['background'], "color": colors['text'], "textAlign": "center", "font-family": 'Trebuchet MS'})
 
+@app.callback(
+    Output("table", "data"),
+    Output("filterButton", "n_clicks"),
+    Input("filterButton", "n_clicks"),
+    Input("courseYearFilter", "value")
+)
+def filterData(n_clicks, courseYear):
+    if n_clicks > 0:
+        filteredData = db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).filter_by(yearLevel=courseYear[0]).all()
+        return data, 0
 
 @app.callback(
     Output("table", 'data'),
@@ -108,7 +118,7 @@ app.layout = html.Div([
 def addRows(n_clicks, data, schoolInput, courseInput, gradeInput, activeTab):
     if n_clicks > 0:
         if activeTab != "homeTab":
-            schoolInput = data[0][0]
+            schoolInput = data[0]["name"]
 
         schoolID = db.session.query(School.id).filter_by(name=schoolInput).first()
         tempSchoolID = schoolID.id
@@ -128,9 +138,7 @@ def addRows(n_clicks, data, schoolInput, courseInput, gradeInput, activeTab):
         db.session.commit()
 
         data.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput})
-
-    return data, 0
-
+        return data, 0
 
 @app.callback(
     Output("graph", "figure"),
@@ -144,6 +152,7 @@ def display_graph(data, tab_chosen):
     else:
         fig = px.box(df, x="courseCode", y="mark", labels={"courseCode": "Course Code", "mark": "Final Course Marks"})
     return fig
+
 
 @app.callback(
     Output("content", "children"),
