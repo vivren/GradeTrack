@@ -6,15 +6,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 import dash_bootstrap_components as dbc
 import re
-from app import app, df
+from app import app
 from models import School, Course, Mark, db
 
 colors = {
     'background': '#111111',
     'text': '#7FDBFF'
 }
-print(df)
-
 western_layout = html.Div([
     html.Div(style={'backgroundColor': colors['background']}, children=[
         html.H1(
@@ -34,7 +32,7 @@ western_layout = html.Div([
 
         dcc.Dropdown(["course 1", "course2"], id="courseNameFilter", multi=True),
 
-        html.Button("Filter Courses", id="filterButton", n_clicks=0)
+        html.Button("Clear Filters", id="clearFilterButton", n_clicks=0)
     ]),
 
 
@@ -59,7 +57,7 @@ western_layout = html.Div([
             style={"padding": 10}
         ),
 
-        html.Button("Add Mark", id="addMarkButton", n_clicks=0),
+        html.Button("Add Mark", id="addWesternMarkButton", n_clicks=0),
 
         html.Button("Clear Input", id="Clear input button", n_clicks=0)],
         ),
@@ -68,8 +66,8 @@ western_layout = html.Div([
     html.Div(id='gradesTable', children=[
         dash_table.DataTable(
             id="westernTable",
-            columns=[{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns[1:]],
-            data=df.loc[df["name"] == "University of Western Ontario"].to_dict('records'),
+            columns=[],
+            data=[],
             row_deletable=False,
             sort_action="native",
             sort_mode="multi",
@@ -85,20 +83,65 @@ western_layout = html.Div([
 ])
 
 @app.callback(
-    Output("westernTable", "data"),
-    Output("filterButton", "n_clicks"),
-    Input("filterButton", "n_clicks"),
-    Input("westernTable", "data"),
-    Input("courseYearFilter", "value"),
+    Output("courseNameFilter", "options"),
+    Input("tabs", "active_tab"),
+    Input("westernTable", "data")
 )
-def filterData(filterClicks, data, courseFilter):
-    if filterClicks > 0:
-        #filteredData = db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).filter_by(yearLevel=courseYear[0]).all()
-        filteredData = db.session.query(Course.courseCode, Course.yearLevel).filter_by(yearLevel=1).all()
-        print(filteredData)
-        df = pd.DataFrame(filteredData)
-        return df, 0
-    return data, 0
+def updateCourseNameFilter(activeTab, data):
+    df = pd.DataFrame(db.session.query(Course.courseCode))["courseCode"].unique().tolist()
+    df = sorted(df)
+    return df
+
+@app.callback(
+    Output("westernTable", "data"),
+    Output("westernTable", "columns"),
+    Output("clearFilterButton", "n_clicks"),
+    Output("addWesternMarkButton", "n_clicks"),
+    Input("tabs", "active_tab"),
+    Input("clearFilterButton", "n_clicks"),
+    Input("addWesternMarkButton", "n_clicks"),
+    Input("courseYearFilter", "value"),
+    Input("courseNameFilter", "value"),
+    Input("courseInput", "value"),
+    Input("gradeInput", "value"),
+    Input("westernTable", "data"),
+)
+def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, courseNameFilter, courseInput, gradeInput, data):
+    if (courseYearFilter is not None or courseNameFilter is not None) and clearFilterClicks == 0:
+        if courseYearFilter is not None:
+            filteredYearData = pd.DataFrame(db.session.query(Course.courseCode, School.name, Mark.mark).filter_by(yearLevel=int(courseYearFilter[0][0])).all()).to_dict('records')
+            returnData = [x for x in data if x in filteredYearData]
+        if courseNameFilter is not None:
+            filteredCourseData = pd.DataFrame(db.session.query(Course.courseCode, Course.yearLevel).filter_by(courseCode=courseNameFilter).all()).to_dict('records')
+            returnData = [row for row in data if row in filteredCourseData]
+        returnData = pd.DataFrame(data=returnData)
+    else:
+        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all())
+        returnData = returnData.loc[returnData["name"] == "University of Western Ontario"]
+
+        if addClicks > 0:
+            schoolInput = returnData["name"][0]
+            schoolID = db.session.query(School.id).filter_by(name=schoolInput).first()
+            tempSchoolID = schoolID.id
+
+            courseExists = db.session.query(Course.id).filter_by(courseCode=courseInput, schoolID=tempSchoolID).first()
+            if courseExists is not None:
+                tempCourseID = courseExists.id
+            else:
+                tempYearLevel = re.findall('\d+|$', courseInput)[0][0]
+                course = Course(courseCode=courseInput, yearLevel=tempYearLevel, schoolID=tempSchoolID)
+                tempCourseID = course.id
+                db.session.add(course)
+                db.session.commit()
+
+            mark = Mark(mark=gradeInput, courseID=tempCourseID)
+            db.session.add(mark)
+            db.session.commit()
+
+            returnData.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
+    columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in returnData.columns[1:]]
+    return returnData.to_dict('records'), columns, 0, 0
+
 
 @app.callback(
     Output("westernGraph", "figure"),

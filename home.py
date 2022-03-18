@@ -6,9 +6,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 import dash_bootstrap_components as dbc
 import re
-from app import app, df
+from app import app
 from models import School, Course, Mark, db
-
 
 # server = Flask(__name__)
 # app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
@@ -51,7 +50,7 @@ home_layout = html.Div([
             style={"padding": 10}
         ),
 
-        html.Button("Add Mark", id="addMarkButton", n_clicks=0),
+        html.Button("Add Mark", id="addHomeMarkButton", n_clicks=0),
 
         html.Button("Clear Input", id="Clear input button", n_clicks=0)],
         style={'backgroundColor': colors['background']}
@@ -61,8 +60,8 @@ home_layout = html.Div([
     html.Div(id='gradesTable', children=[
         dash_table.DataTable(
             id="homeTable",
-            columns=[{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns],
-            data=df.to_dict('records'),
+            columns=[],
+            data=[],
             row_deletable=False,
             sort_action="native",
             sort_mode="multi",
@@ -73,22 +72,23 @@ home_layout = html.Div([
     ]),
     dcc.Graph(id="homeGraph")
 ])
-
 @app.callback(
     Output("homeTable", "data"),
-    Output("addMarkButton", "n_clicks"),
-    Input("addMarkButton", "n_clicks"),
+    Output("homeTable", "columns"),
+    Output("addHomeMarkButton", "n_clicks"),
+    Input("tabs", "active_tab"),
+    Input("addHomeMarkButton", "n_clicks"),
     Input("homeTable", "data"),
     Input("schoolInput", "value"),
     Input("courseInput", "value"),
     Input("gradeInput", "value"),
-    Input("tabs", "active_tab")
 )
-def addRow(addClicks, data, schoolInput, courseInput, gradeInput, activeTab):
-    if addClicks > 0:
-        if activeTab != "homeTab":
-            schoolInput = data[0]["name"]
+def updateHomeTable(activeTab, addClicks, df, schoolInput, courseInput, gradeInput):
+    df = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all())
+    columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns]
 
+    if addClicks > 0:
+        print("hi")
         schoolID = db.session.query(School.id).filter_by(name=schoolInput).first()
         tempSchoolID = schoolID.id
 
@@ -105,9 +105,9 @@ def addRow(addClicks, data, schoolInput, courseInput, gradeInput, activeTab):
         mark = Mark(mark=gradeInput, courseID=tempCourseID)
         db.session.add(mark)
         db.session.commit()
+        df = df.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
 
-        data.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput})
-    return data, 0
+    return df.to_dict('records'), columns, 0
 
 @app.callback(
     Output("homeGraph", "figure"),
