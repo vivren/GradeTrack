@@ -8,6 +8,7 @@ import dash_bootstrap_components as dbc
 import re
 from app import app
 from models import School, Course, Mark, db
+from sqlalchemy.sql import text
 
 colors = {
     'background': '#111111',
@@ -95,7 +96,6 @@ def updateCourseNameFilter(activeTab, data):
 @app.callback(
     Output("westernTable", "data"),
     Output("westernTable", "columns"),
-    Output("clearFilterButton", "n_clicks"),
     Output("addWesternMarkButton", "n_clicks"),
     Input("tabs", "active_tab"),
     Input("clearFilterButton", "n_clicks"),
@@ -109,12 +109,15 @@ def updateCourseNameFilter(activeTab, data):
 def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, courseNameFilter, courseInput, gradeInput, data):
     if (courseYearFilter is not None or courseNameFilter is not None) and clearFilterClicks == 0:
         if courseYearFilter is not None:
-            filteredYearData = pd.DataFrame(db.session.query(Course.courseCode, School.name, Mark.mark).filter_by(yearLevel=int(courseYearFilter[0][0])).all()).to_dict('records')
-            returnData = [x for x in data if x in filteredYearData]
+            for i in range(len(courseYearFilter)):
+                courseYearFilter[i] = int(courseYearFilter[i][0])
+            returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Course.yearLevel.in_(courseYearFilter)).all()).to_dict('records')
+            print(returnData)
+            #returnData = filteredYearData.append(data)
         if courseNameFilter is not None:
-            filteredCourseData = pd.DataFrame(db.session.query(Course.courseCode, Course.yearLevel).filter_by(courseCode=courseNameFilter).all()).to_dict('records')
-            returnData = [row for row in data if row in filteredCourseData]
+            returnData = pd.DataFrame(db.session.query(Course.courseCode, Course.yearLevel).filter_by(courseCode=courseNameFilter).all()).to_dict('records')
         returnData = pd.DataFrame(data=returnData)
+
     else:
         returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all())
         returnData = returnData.loc[returnData["name"] == "University of Western Ontario"]
@@ -140,8 +143,18 @@ def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, c
 
             returnData.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in returnData.columns[1:]]
-    return returnData.to_dict('records'), columns, 0, 0
+    return returnData.to_dict('records'), columns, 0
 
+@app.callback(
+    Output("clearFilterButton", "n_clicks"),
+    Output("courseYearFilter", "value"),
+    Output("courseNameFilter", "value"),
+    Input("clearFilterButton", "n_clicks"),
+)
+def clearFilters(clearClicks):
+    if clearClicks > 0:
+        return 0, [], ""
+    return 0, dash.no_update, dash.no_update
 
 @app.callback(
     Output("westernGraph", "figure"),
