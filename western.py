@@ -107,24 +107,27 @@ def updateCourseNameFilter(activeTab, data):
     Input("westernTable", "data"),
 )
 def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, courseNameFilter, courseInput, gradeInput, data):
-    if (courseYearFilter is not None or courseNameFilter is not None) and clearFilterClicks == 0:
-        if courseYearFilter is not None:
+    #returnData = None
+    if (courseYearFilter != [] or courseNameFilter !="") and clearFilterClicks == 0:
+        if courseYearFilter == []:
+            courseYearFilter = db.session.query(Course.yearLevel).filter(School.name == "University of Western Ontario").all()
+        else:
             for i in range(len(courseYearFilter)):
                 courseYearFilter[i] = int(courseYearFilter[i][0])
-            returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Course.yearLevel.in_(courseYearFilter)).all()).to_dict('records')
-            print(returnData)
-            #returnData = filteredYearData.append(data)
-        if courseNameFilter is not None:
-            returnData = pd.DataFrame(db.session.query(Course.courseCode, Course.yearLevel).filter_by(courseCode=courseNameFilter).all()).to_dict('records')
-        returnData = pd.DataFrame(data=returnData)
-
+        if courseNameFilter == "":
+            courseNameFilter = db.session.query(Course.courseCode).filter(Course.schoolID == School.id).filter(School.name == "University of Western Ontario").all()
+            courseNameFilter = [course for sublist in courseNameFilter for course in sublist]
+        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(School.id == Course.schoolID).filter(School.name == "University of Western Ontario").filter(Course.courseCode.in_(courseNameFilter)).filter(Course.yearLevel.in_(courseYearFilter)).all())
+        if returnData.empty:
+            returnData = []
     else:
-        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all())
-        returnData = returnData.loc[returnData["name"] == "University of Western Ontario"]
+    #if returnData is None or returnData.empty:
 
+        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(School.id == Course.schoolID).filter(School.name == "University of Western Ontario").all())
+        #returnData = returnData.loc[returnData["name"] == "University of Western Ontario"]
         if addClicks > 0:
-            schoolInput = returnData["name"][0]
-            schoolID = db.session.query(School.id).filter_by(name=schoolInput).first()
+            #schoolInput = returnData["name"][0]
+            schoolID = db.session.query(School.id).filter_by(name="University of Western Ontario").first()
             tempSchoolID = schoolID.id
 
             courseExists = db.session.query(Course.id).filter_by(courseCode=courseInput, schoolID=tempSchoolID).first()
@@ -141,7 +144,7 @@ def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, c
             db.session.add(mark)
             db.session.commit()
 
-            returnData.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
+            returnData.append({"name": "University of Western Ontario", "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in returnData.columns[1:]]
     return returnData.to_dict('records'), columns, 0
 
@@ -154,7 +157,7 @@ def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, c
 def clearFilters(clearClicks):
     if clearClicks > 0:
         return 0, [], ""
-    return 0, dash.no_update, dash.no_update
+    return 0, [], ""
 
 @app.callback(
     Output("westernGraph", "figure"),
