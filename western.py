@@ -74,14 +74,16 @@ western_layout = html.Div([
             sort_mode="multi",
             page_action="none",
             style_table={"height": "300px", "overflowY": "auto"},
-            style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
+            style_cell={'textAlign': 'left', "minWidth": "100px", "width": "800px", "maxWidth": "800px"}
         ),
     ]),
+
+    html.Div("", id="noDataError", style={"padding": 50, "color": "red"}),
+
     dcc.Graph(id="westernGraph"),
 
-    html.Div()
 
-])
+], style={'backgroundColor': colors['background']})
 
 @app.callback(
     Output("courseNameFilter", "options"),
@@ -89,7 +91,7 @@ western_layout = html.Div([
     Input("westernTable", "data")
 )
 def updateCourseNameFilter(activeTab, data):
-    df = pd.DataFrame(db.session.query(Course.courseCode))["courseCode"].unique().tolist()
+    df = pd.DataFrame(db.session.query(Course.courseCode).filter(Course.schoolID == School.id).filter(School.name == "University of Western Ontario"))["courseCode"].unique().tolist()
     df = sorted(df)
     return df
 
@@ -107,26 +109,22 @@ def updateCourseNameFilter(activeTab, data):
     Input("westernTable", "data"),
 )
 def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, courseNameFilter, courseInput, gradeInput, data):
-    #returnData = None
-    if (courseYearFilter != [] or courseNameFilter !="") and clearFilterClicks == 0:
-        if courseYearFilter == []:
+    if (courseYearFilter != [] or courseNameFilter != "") and clearFilterClicks == 0:
+        if not courseYearFilter:
             courseYearFilter = db.session.query(Course.yearLevel).filter(School.name == "University of Western Ontario").all()
+            courseYearFilter = [year for sublist in courseYearFilter for year in sublist]
         else:
             for i in range(len(courseYearFilter)):
                 courseYearFilter[i] = int(courseYearFilter[i][0])
         if courseNameFilter == "":
             courseNameFilter = db.session.query(Course.courseCode).filter(Course.schoolID == School.id).filter(School.name == "University of Western Ontario").all()
             courseNameFilter = [course for sublist in courseNameFilter for course in sublist]
-        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(School.id == Course.schoolID).filter(School.name == "University of Western Ontario").filter(Course.courseCode.in_(courseNameFilter)).filter(Course.yearLevel.in_(courseYearFilter)).all())
+        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(Course.schoolID == School.id).filter(School.name == "University of Western Ontario").filter(Course.courseCode.in_(courseNameFilter)).filter(Course.yearLevel.in_(list(set(courseYearFilter)))).all())
         if returnData.empty:
-            returnData = []
+            return [], [], 0
     else:
-    #if returnData is None or returnData.empty:
-
         returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(School.id == Course.schoolID).filter(School.name == "University of Western Ontario").all())
-        #returnData = returnData.loc[returnData["name"] == "University of Western Ontario"]
         if addClicks > 0:
-            #schoolInput = returnData["name"][0]
             schoolID = db.session.query(School.id).filter_by(name="University of Western Ontario").first()
             tempSchoolID = schoolID.id
 
@@ -144,7 +142,8 @@ def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, c
             db.session.add(mark)
             db.session.commit()
 
-            returnData.append({"name": "University of Western Ontario", "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
+            returnData = returnData.append({"name": "University of Western Ontario", "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
+            print(returnData)
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in returnData.columns[1:]]
     return returnData.to_dict('records'), columns, 0
 
@@ -161,10 +160,13 @@ def clearFilters(clearClicks):
 
 @app.callback(
     Output("westernGraph", "figure"),
+    Output("noDataError", "children"),
+    Output("gradesTable", "children"),
     Input("westernTable", "data"),
-    )
+)
 def display_graph(data):
     df = pd.DataFrame(data)
-        # df.columns = ['name', 'courseCode', 'mark']
-    fig = px.box(df, x="courseCode", y="mark", labels={"courseCode": "Course Name", "mark": "Final Course Marks"})
-    return fig
+    if df.empty:
+        return {}, "Filters Returned No Results", None
+    else:
+        return px.box(df, x="courseCode", y="mark",  category_orders={"courseCode": sorted(df['courseCode'].unique())}, labels={"courseCode": "Course Name", "mark": "Final Course Marks"}), "", dash.no_update

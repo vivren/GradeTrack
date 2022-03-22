@@ -9,12 +9,6 @@ import re
 from app import app
 from models import School, Course, Mark, db
 
-# server = Flask(__name__)
-# app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
-# app.server.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# app.server.config["SQLALCHEMY_DATABASE_URI"] = "postgresql+psycopg2://master:password@gradetrack.cmoor2gacvn8.us-east-1.rds.amazonaws.com/gradetrack"
-# db = SQLAlchemy(app.server)
-
 colors = {
     'background': '#111111',
     'text': '#7FDBFF'
@@ -26,15 +20,7 @@ home_layout = html.Div([
         dcc.Dropdown(["University of Western Ontario", "University of Toronto", "York University",
                       "University of British Columbia", "University of Waterloo", "McGill University",
                       "Wilfred Laurier University", "Queens University", "University of Guelph"],
-                     placeholder="Select your school", id="schoolInput"
-                     #style={"width": "50%", "left": "50%", "right": "50%" }
-
-                     # dcc.Input(
-                     #     id="schoolInput",
-                     #     placeholder="Enter school",
-                     #     value="",
-                     #     style={"padding": 10}
-                     ),
+                     placeholder="Select your school", id="schoolInput"),
 
         dcc.Input(
             id="courseInput",
@@ -88,7 +74,6 @@ def updateHomeTable(activeTab, addClicks, df, schoolInput, courseInput, gradeInp
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns]
 
     if addClicks > 0:
-        print("hi")
         schoolID = db.session.query(School.id).filter_by(name=schoolInput).first()
         tempSchoolID = schoolID.id
 
@@ -115,6 +100,5 @@ def updateHomeTable(activeTab, addClicks, df, schoolInput, courseInput, gradeInp
     )
 def display_graph(data):
     df = pd.DataFrame(data)
-        # df.columns = ['name', 'courseCode', 'mark']
-    fig = px.box(df, x="name", y="mark", labels={"name": "School Name", "mark": "Final Course Marks"})
+    fig = px.box(df, x="name", y="mark", category_orders={"name": sorted(df['name'].unique())}, labels={"name": "School Name", "mark": "Final Course Marks"})
     return fig
