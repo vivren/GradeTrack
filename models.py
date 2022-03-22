@@ -4,7 +4,6 @@ from app import app
 
 db = SQLAlchemy(app.server)
 
-
 class School(db.Model):
     __tablename__ = "school"
 
