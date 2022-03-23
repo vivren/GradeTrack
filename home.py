@@ -7,7 +7,7 @@ from flask import Flask
 import dash_bootstrap_components as dbc
 import re
 from app import app
-from models import School, Course, Mark, db
+from models import School, Faculty, Course, Mark, db
 
 colors = {
     'background': '#111111',
@@ -17,20 +17,23 @@ colors = {
 home_layout = html.Div([
 
     html.Div([
-        dcc.Dropdown(["University of Western Ontario", "University of Toronto", "York University",
-                      "University of British Columbia", "University of Waterloo", "McGill University",
-                      "Wilfred Laurier University", "Queens University", "University of Guelph"],
-                     placeholder="Select your school", id="schoolInput"),
+        dcc.Dropdown([],
+            id="schoolInput",
+            placeholder="Select your school"),
+
+        dcc.Dropdown([],
+            id="homeFacultyInput",
+            placeholder="Select school to see faculties"),
 
         dcc.Input(
-            id="courseInput",
+            id="homeCourseInput",
             placeholder="Enter course code",
             value="",
             style={"padding": 10}
         ),
 
         dcc.Input(
-            id="gradeInput",
+            id="homeGradeInput",
             placeholder="Enter course grade",
             value='',
             style={"padding": 10}
@@ -58,31 +61,50 @@ home_layout = html.Div([
     ]),
     dcc.Graph(id="homeGraph")
 ])
+
+@app.callback(
+    Output("schoolInput", "options"),
+    Input("tabs", "active_tab"),
+)
+def updateSchoolDropdown(activeTab):
+    schools = db.session.query(School.name).all()
+    schools = sorted([school for sublist in schools for school in sublist])
+    return schools
+
+@app.callback(
+    Output("homeFacultyInput", "options"),
+    Input("homeSchoolInput", "value"),
+)
+def updateFacultyDropdown(schoolInput):
+    faculties = db.session.query(Faculty.name).filter(School.id == Faculty.schoolID).filter(School.name == schoolInput).all()
+    faculties = sorted([faculty for sublist in faculties for faculty in sublist])
+    return faculties
+
 @app.callback(
     Output("homeTable", "data"),
     Output("homeTable", "columns"),
     Output("addHomeMarkButton", "n_clicks"),
     Input("tabs", "active_tab"),
     Input("addHomeMarkButton", "n_clicks"),
-    Input("homeTable", "data"),
     Input("schoolInput", "value"),
-    Input("courseInput", "value"),
-    Input("gradeInput", "value"),
+    Input("homeFacultyInput", "value"),
+    Input("homeCourseInput", "value"),
+    Input("homeGradeInput", "value"),
 )
-def updateHomeTable(activeTab, addClicks, df, schoolInput, courseInput, gradeInput):
-    df = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all())
+def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput, gradeInput):
+    df = pd.DataFrame(db.session.query(School.name, Faculty.name, Course.courseCode, Mark.mark).join(Faculty, School.id == Faculty.schoolID).join(Course, Course.facultyID == Faculty.id).join(Mark, Mark.courseID == Course.id).all(), columns=["School", "Faculty", "Course", "Mark"])
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns]
 
     if addClicks > 0:
-        schoolID = db.session.query(School.id).filter_by(name=schoolInput).first()
-        tempSchoolID = schoolID.id
+        facultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput).filter(School.name == schoolInput).first()
+        tempFacultyID = facultyID.id
 
-        courseExists = db.session.query(Course.id).filter_by(courseCode=courseInput, schoolID=tempSchoolID).first()
-        if courseExists != None:
+        courseExists = db.session.query(Course.id).filter_by(courseCode=courseInput, facultyID=tempFacultyID).first()
+        if courseExists is not None:
             tempCourseID = courseExists.id
         else:
             tempYearLevel = re.findall('\d+|$', courseInput)[0][0]
-            course = Course(courseCode=courseInput, yearLevel=tempYearLevel, schoolID=tempSchoolID)
+            course = Course(courseCode=courseInput, yearLevel=tempYearLevel, facultyID=tempFacultyID)
             tempCourseID = course.id
             db.session.add(course)
             db.session.commit()
@@ -90,7 +112,7 @@ def updateHomeTable(activeTab, addClicks, df, schoolInput, courseInput, gradeInp
         mark = Mark(mark=gradeInput, courseID=tempCourseID)
         db.session.add(mark)
         db.session.commit()
-        df = df.append({"name": schoolInput, "courseCode": courseInput, "mark": gradeInput}, ignore_index=True)
+        df = df.append({"School": schoolInput, "Faculty": facultyInput, "Course": courseInput, "Mark": gradeInput}, ignore_index=True)
 
     return df.to_dict('records'), columns, 0
 
@@ -100,5 +122,5 @@ def updateHomeTable(activeTab, addClicks, df, schoolInput, courseInput, gradeInp
     )
 def display_graph(data):
     df = pd.DataFrame(data)
-    fig = px.box(df, x="name", y="mark", category_orders={"name": sorted(df['name'].unique())}, labels={"name": "School Name", "mark": "Final Course Marks"})
+    fig = px.box(df, x="School", y="Mark", category_orders={"name": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
     return fig
