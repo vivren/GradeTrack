@@ -9,7 +9,15 @@ class School(db.Model):
 
     id = db.Column(db.Integer, nullable=False, primary_key=True)
     name = db.Column(db.String(40), nullable=False)
-    courses = db.relationship("Course", backref='school')
+    faculties = db.relationship("Faculty", backref='school')
+
+class Faculty(db.Model):
+    __tabelname__ = "faculty"
+
+    id = db.Column(db.Integer, nullable=False, primary_key=True)
+    name = db.Column(db.String(40), nullable=False)
+    schoolID = db.Column(db.Integer, db.ForeignKey("school.id"), nullable=False)
+    courses = db.relationship("Course", backref='faculty')
 
 
 class Course(db.Model):
@@ -18,7 +26,7 @@ class Course(db.Model):
     id = db.Column(db.Integer, nullable=False, primary_key=True)
     courseCode = db.Column(db.String(40), nullable=False)
     yearLevel = db.Column(db.Integer, nullable=False)
-    schoolID = db.Column(db.Integer, db.ForeignKey("school.id"), nullable=False)
+    facultyID = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
     marks = db.relationship("Mark", backref='course')
 
 
