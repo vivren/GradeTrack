@@ -1,9 +1,9 @@
 import dash
 from dash import Dash, html, dcc, Input, Output, dash_table, State
 import plotly.express as px
-import pandas as pd
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
+import random
 
 server = Flask(__name__)
 app = dash.Dash(__name__, server=server, suppress_callback_exceptions=True)
@@ -17,7 +17,15 @@ class School(db.Model):
 
     id = db.Column(db.Integer, nullable=False, primary_key=True)
     name = db.Column(db.String(40), nullable=False)
-    courses = db.relationship("Course", backref='school')
+    faculties = db.relationship("Faculty", backref='school')
+
+class Faculty(db.Model):
+    __tabelname__ = "faculty"
+
+    id = db.Column(db.Integer, nullable=False, primary_key=True)
+    name = db.Column(db.String(40), nullable=False)
+    schoolID = db.Column(db.Integer, db.ForeignKey("school.id"), nullable=False)
+    courses = db.relationship("Course", backref='faculty')
 
 
 class Course(db.Model):
@@ -26,7 +34,7 @@ class Course(db.Model):
     id = db.Column(db.Integer, nullable=False, primary_key=True)
     courseCode = db.Column(db.String(40), nullable=False)
     yearLevel = db.Column(db.Integer, nullable=False)
-    schoolID = db.Column(db.Integer, db.ForeignKey("school.id"), nullable=False)
+    facultyID = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
     marks = db.relationship("Mark", backref='course')
 
 
@@ -37,48 +45,60 @@ class Mark(db.Model):
     mark = db.Column(db.Integer, nullable=False)
     courseID = db.Column(db.Integer, db.ForeignKey("course.id"), nullable=False)
 
+db.create_all()
 
-# db.create_all()
-# western = School(name="University of Western Ontario")
-# uoft = School(name="University of Toronto")
-# york = School(name="York University")
-# ubc = School(name="University of British Columbia")
-# waterloo = School(name="University of Waterloo")
-# mcgill = School(name="McGill University")
-# laurier = School(name="Wilfred Laurier University")
-# queens = School(name="Queens University")
-# guelph = School(name="University of Guelph")
-#
-# course = Course(courseCode="CS1026", yearLevel=1, schoolID=1)
-# course2 = Course(courseCode="CS1027", yearLevel=1, schoolID=2)
-# course3 = Course(courseCode="CS1026", yearLevel=1, schoolID=3)
-# course4 = Course(courseCode="CS1026", yearLevel=1, schoolID=4)
-# course5 = Course(courseCode="CS1026", yearLevel=1, schoolID=5)
-# course6 = Course(courseCode="CS1026", yearLevel=1, schoolID=6)
-# course7 = Course(courseCode="CS1026", yearLevel=1, schoolID=7)
-# course8 = Course(courseCode="CS1026", yearLevel=1, schoolID=8)
-# course9 = Course(courseCode="CS1026", yearLevel=1, schoolID=9)
-#
-# mark = Mark(mark=91, courseID=1)
-# mark2 = Mark(mark=85, courseID=2)
-# mark3 = Mark(mark=62, courseID=3)
-# mark4 = Mark(mark=50, courseID=4)
-# mark5 = Mark(mark=99, courseID=5)
-# mark6 = Mark(mark=78, courseID=6)
-# mark7 = Mark(mark=42, courseID=7)
-# mark8 = Mark(mark=72, courseID=8)
-# mark9 = Mark(mark=89, courseID=9)
-#
+
+western = School(name="University of Western Ontario")
+uoft = School(name="University of Toronto")
+york = School(name="York University")
+waterloo = School(name="University of Waterloo")
+laurier = School(name="Wilfred Laurier University")
+queens = School(name="Queens University")
+
 # db.session.add(western)
 # db.session.add(uoft)
 # db.session.add(york)
-# db.session.add(ubc)
 # db.session.add(waterloo)
-# db.session.add(mcgill)
 # db.session.add(laurier)
 # db.session.add(queens)
-# db.session.add(guelph)
-#
+# db.session.commit()
+
+westernArts = Faculty(name="Arts and Humanities", schoolID=1)
+westernEducation = Faculty(name="Faculty of Education", schoolID=1)
+westernEngineering = Faculty(name="Faculty of Engineering", schoolID=1)
+westernMedia= Faculty(name="Faculty of Information and Media Studies", schoolID=1)
+westernHealthSci = Faculty(name="Faculty of Health Science", schoolID=1)
+westernIvey = Faculty(name="Ivey School of Business", schoolID=1)
+westernLaw = Faculty(name="Faculty of Law", schoolID=1)
+westernMusic = Faculty(name="Don Wright Faculty of Music", schoolID=1)
+westernMedicine = Faculty(name="Schulich School of Medicine and Dentistry", schoolID=1)
+westernScience = Faculty(name="Faculty of Science", schoolID=1)
+westernSocialScience = Faculty(name="Faculty of Social Science", schoolID=1)
+
+# db.session.add(westernArts)
+# db.session.add(westernEducation)
+# db.session.add(westernEngineering)
+# db.session.add(westernMedia)
+# db.session.add(westernHealthSci)
+# db.session.add(westernIvey)
+# db.session.add(westernLaw)
+# db.session.add(westernMusic)
+# db.session.add(westernMedicine)
+# db.session.add(westernScience)
+# db.session.add(westernSocialScience)
+# db.session.commit()
+
+course = Course(courseCode="ENG 1020", yearLevel=1, facultyID=1)
+course2 = Course(courseCode="ES 2297", yearLevel=2, facultyID=3)
+course3 = Course(courseCode="MIT 2156", yearLevel=2, facultyID=4)
+course4 = Course(courseCode="HS 4120", yearLevel=4, facultyID=5)
+course5 = Course(courseCode="CS 1026", yearLevel=1, facultyID=10)
+course6 = Course(courseCode="CS 1027", yearLevel=1, facultyID=10)
+course7 = Course(courseCode="CS 2209", yearLevel=2, facultyID=10)
+course8 = Course(courseCode="CS 3340", yearLevel=3, facultyID=10)
+course9 = Course(courseCode="CS 3121", yearLevel=3, facultyID=10)
+course10 = Course(courseCode="BUS 2257", yearLevel=2, facultyID=10)
+
 # db.session.add(course)
 # db.session.add(course2)
 # db.session.add(course3)
@@ -88,15 +108,22 @@ class Mark(db.Model):
 # db.session.add(course7)
 # db.session.add(course8)
 # db.session.add(course9)
-#
-# db.session.add(mark)
-# db.session.add(mark2)
-# db.session.add(mark3)
-# db.session.add(mark4)
-# db.session.add(mark5)
-# db.session.add(mark6)
-# db.session.add(mark7)
-# db.session.add(mark8)
-# db.session.add(mark9)
+# db.session.add(course10)
+# db.session.commit()
 
-#db.session.commit()
+for i in range(1, 11):
+    for j in range(0, 20):
+        temp = random.randint(40, 100)
+        mark = Mark(mark=temp, courseID=i)
+#        db.session.add(mark)
+
+# db.session.commit()
+
+#TRUNCATE course, mark, school, faculty;
+
+# ALTER SEQUENCE school_id_seq RESTART WITH 1;
+# ALTER SEQUENCE faculty_id_seq RESTART WITH 1;
+# ALTER SEQUENCE course_id_seq RESTART WITH 1;
+# ALTER SEQUENCE mark_id_seq RESTART WITH 1;
+
+
