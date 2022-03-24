@@ -18,7 +18,7 @@ home_layout = html.Div([
 
     html.Div([
         dcc.Dropdown([],
-            id="schoolInput",
+            id="homeSchoolInput",
             placeholder="Select your school"),
 
         dcc.Dropdown([],
@@ -46,7 +46,7 @@ home_layout = html.Div([
         ),
 
     dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
-    html.Div(id='gradesTable', children=[
+    html.Div(id='homeGradesTable', children=[
         dash_table.DataTable(
             id="homeTable",
             columns=[],
@@ -63,7 +63,7 @@ home_layout = html.Div([
 ])
 
 @app.callback(
-    Output("schoolInput", "options"),
+    Output("homeSchoolInput", "options"),
     Input("tabs", "active_tab"),
 )
 def updateSchoolDropdown(activeTab):
@@ -86,7 +86,7 @@ def updateFacultyDropdown(schoolInput):
     Output("addHomeMarkButton", "n_clicks"),
     Input("tabs", "active_tab"),
     Input("addHomeMarkButton", "n_clicks"),
-    Input("schoolInput", "value"),
+    Input("homeSchoolInput", "value"),
     Input("homeFacultyInput", "value"),
     Input("homeCourseInput", "value"),
     Input("homeGradeInput", "value"),
@@ -96,12 +96,11 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns]
 
     if addClicks > 0:
-        facultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput).filter(School.name == schoolInput).first()
-        tempFacultyID = facultyID.id
+        tempFacultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput[0]).filter(School.name == schoolInput[0]).first()[0]
 
-        courseExists = db.session.query(Course.id).filter_by(courseCode=courseInput, facultyID=tempFacultyID).first()
+        courseExists = db.session.query(Course.id).filter(Course.courseCode == courseInput).filter(Course.facultyID == tempFacultyID).first()
         if courseExists is not None:
-            tempCourseID = courseExists.id
+            tempCourseID = courseExists[0]
         else:
             tempYearLevel = re.findall('\d+|$', courseInput)[0][0]
             course = Course(courseCode=courseInput, yearLevel=tempYearLevel, facultyID=tempFacultyID)

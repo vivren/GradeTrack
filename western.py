@@ -64,7 +64,7 @@ western_layout = html.Div([
         ),
 
     dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
-    html.Div(id='gradesTable', children=[
+    html.Div(id='westernTable', children=[
         dash_table.DataTable(
             id="westernTable",
             columns=[],
@@ -98,10 +98,10 @@ def updateFacultyFilter(schoolInput):
 @app.callback(
     Output("courseNameFilter", "options"),
     Input("tabs", "active_tab"),
-    Input("westernTable", "data")
+    #Input("westernTable", "data")
 )
-def updateCourseNameFilter(activeTab, data):
-    df = pd.DataFrame(db.session.query(Course.courseCode).filter(Course.schoolID == School.id).filter(School.name == "University of Western Ontario"))["courseCode"].unique().tolist()
+def updateCourseNameFilter(activeTab):
+    df = pd.DataFrame(db.session.query(Course.courseCode).filter(Course.facultyID == Faculty.id).filter(Faculty.schoolID == School.id).filter(School.name == "University of Western Ontario"))["courseCode"].unique().tolist()
     df = sorted(df)
     return df
 
@@ -122,7 +122,7 @@ def updateCourseNameFilter(activeTab, data):
     Input("westernGradeInput", "value"),
 )
 def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, facultyFilter, faculties, courseNameFilter, courses, facultyInput, courseInput, gradeInput):
-    if (courseYearFilter != [] or courseNameFilter != "") and clearFilterClicks == 0:
+    if (courseYearFilter != [] or courseNameFilter != "" or facultyFilter != "") and clearFilterClicks == 0:
         if not courseYearFilter:
             courseYearFilter = [1,2,3,4]
         else:
@@ -130,32 +130,31 @@ def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, f
                 courseYearFilter[i] = int(courseYearFilter[i][0])
         if courseNameFilter == "":
             courseNameFilter = courses
-        if facultyFilter == "":
+        if facultyFilter == [] or facultyFilter == "":
             facultyFilter = faculties
-        returnData = pd.DataFrame(db.session.query(School.name, Faculty.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(Course.facultyID == Faculty.id).filter(Faculty.schoolID == School.id).filter(School.name == "University of Western Ontario").filter(Faculty.name.in_(facultyFilter)).filter(Course.courseCode.in_(courseNameFilter)).filter(Course.yearLevel.in_(courseYearFilter)).all())
+        returnData = pd.DataFrame(db.session.query(School.name, Faculty.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(Course.facultyID == Faculty.id).filter(Faculty.schoolID == School.id).filter(School.name == "University of Western Ontario").filter(Faculty.name.in_(facultyFilter)).filter(Course.courseCode.in_(courseNameFilter)).filter(Course.yearLevel.in_(courseYearFilter)).all(), columns=["School", "Faculty", "Course", "Mark"])
         if returnData.empty:
             return [], [], 0
     else:
-        returnData = pd.DataFrame(db.session.query(School.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(School.id == Course.schoolID).filter(School.name == "University of Western Ontario").all(), columns=["School", "Faculty", "Course", "Mark"])
+        returnData = pd.DataFrame(db.session.query(School.name, Faculty.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(Course.facultyID == Faculty.id).filter(School.id == Faculty.schoolID).filter(School.name == "University of Western Ontario").all(), columns=["School", "Faculty", "Course", "Mark"])
         if addClicks > 0:
-            facultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput).filter(School.name == "University of Western Ontario").first()
-            tempFacultyID = facultyID.id
+            tempFacultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput[0]).filter(School.name == "University of Western Ontario").first()[0]
 
-            courseExists = db.session.query(Course.id).filter_by(courseCode=courseInput, facultyID=tempFacultyID).first()
+            courseExists = db.session.query(Course.id).filter(Course.courseCode == courseInput).filter(Course.facultyID == tempFacultyID).first()
             if courseExists is not None:
-                tempCourseID = courseExists.id
+                tempCourseID = courseExists[0]
             else:
                 tempYearLevel = re.findall('\d+|$', courseInput)[0][0]
                 course = Course(courseCode=courseInput, yearLevel=tempYearLevel, facultyID=tempFacultyID)
                 db.session.add(course)
                 db.session.commit()
-                tempCourseID = db.session.query(Course.id).filter_by(courseCode=courseInput, facultyID=tempFacultyID).first()
+                tempCourseID = db.session.query(Course.id).filter_by(courseCode=courseInput, facultyID=tempFacultyID).first()[0]
 
             mark = Mark(mark=gradeInput, courseID=tempCourseID)
             db.session.add(mark)
             db.session.commit()
+            returnData = returnData.append({"School": "University of Western Ontario", "Faculty": facultyInput[0], "Course": courseInput, "Mark": gradeInput}, ignore_index=True)
 
-            returnData = returnData.append({"School": "University of Western Ontario", "Faculty": facultyInput, "Course": courseInput, "Mark": gradeInput}, ignore_index=True)
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in returnData.columns[1:]]
     return returnData.to_dict('records'), columns, 0
 
@@ -174,7 +173,7 @@ def clearFilters(clearClicks):
 @app.callback(
     Output("westernGraph", "figure"),
     Output("noDataError", "children"),
-    Output("gradesTable", "children"),
+    Output("westernTable", "children"),
     Input("westernTable", "data"),
 )
 def display_graph(data):
@@ -182,4 +181,8 @@ def display_graph(data):
     if df.empty:
         return {}, "Filters Returned No Results", None
     else:
-        return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+        if len(df["Faculty"].unique()) == 1:
+            return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+        return px.box(df, x="Faculty", y="Mark", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+
+
