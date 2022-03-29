@@ -33,7 +33,7 @@ app_tabs = html.Div(
         dbc.Tabs(
             [
                 dbc.Tab(label="Home", tab_id="homeTab", active_tab_style = selectedTabStyle, labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger"),
-                dbc.Tab(label="Western", tab_id="westernTab", active_tab_style = selectedTabStyle, labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger"),
+                dbc.Tab(label="Western", tab_id="UniversityofWesternOntarioTab", active_tab_style = selectedTabStyle, labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger"),
             ],
             id="tabs",
             active_tab="homeTab",
@@ -56,14 +56,15 @@ app.layout = html.Div([
     html.Div(id='content', children=[]),
     ], style={'backgroundColor': colors['background'], "color": colors['text'], "textAlign": "center", "font-family": 'Trebuchet MS'})
 
+
 @app.callback(
     Output("content", "children"),
-    Input("tabs", "active_tab")
+    Input("tabs", "active_tab"),
 )
 def switch_tab(tab_chosen):
     if tab_chosen == "homeTab":
         return home_layout
-    elif tab_chosen == "westernTab":
+    elif tab_chosen == "UniversityofWesternOntarioTab":
         return western_layout
 
 

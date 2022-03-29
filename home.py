@@ -59,7 +59,7 @@ home_layout = html.Div([
             style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
         ),
     ]),
-    dcc.Graph(id="homeGraph")
+    dcc.Graph(id="homeGraph", clickData=None)
 ])
 
 @app.callback(
@@ -123,3 +123,12 @@ def display_graph(data):
     df = pd.DataFrame(data)
     fig = px.box(df, x="School", y="Mark", category_orders={"name": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
     return fig
+
+@app.callback(
+    Output("tabs", "active_tab"),
+    Input("homeGraph", "clickData"),
+)
+def switchTab(clickData):
+    if clickData is not None:
+        return clickData["points"][0]["x"].replace(" ", "") + "Tab"
+    return "homeTab"
