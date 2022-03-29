@@ -96,17 +96,17 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns]
 
     if addClicks > 0:
-        tempFacultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput[0]).filter(School.name == schoolInput[0]).first()[0]
+        tempFacultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput).filter(School.name == schoolInput).first()[0]
 
         courseExists = db.session.query(Course.id).filter(Course.courseCode == courseInput).filter(Course.facultyID == tempFacultyID).first()
         if courseExists is not None:
             tempCourseID = courseExists[0]
         else:
             tempYearLevel = re.findall('\d+|$', courseInput)[0][0]
-            course = Course(courseCode=courseInput, yearLevel=tempYearLevel, facultyID=tempFacultyID)
-            tempCourseID = course.id
+            course = Course(courseCode=courseInput, yearLevel = tempYearLevel, facultyID=tempFacultyID)
             db.session.add(course)
             db.session.commit()
+            tempCourseID = db.session.query(Course.id).filter_by(courseCode=courseInput, facultyID=tempFacultyID).first()[0]
 
         mark = Mark(mark=gradeInput, courseID=tempCourseID)
         db.session.add(mark)
