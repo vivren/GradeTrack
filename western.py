@@ -2,6 +2,7 @@ import dash
 from dash import Dash, html, dcc, Input, Output, dash_table, State
 import plotly.express as px
 import pandas as pd
+import plotly.figure_factory as ff
 from flask_sqlalchemy import SQLAlchemy
 from flask import Flask
 import dash_bootstrap_components as dbc
@@ -181,8 +182,11 @@ def display_graph(data):
     if df.empty:
         return {}, "Filters Returned No Results", None
     else:
+        if len(df["Course"].unique()) == 1:
+            #return ff.create_distplot([df["Mark"]], ["Marks"]), "", dash.no_update
+            return px.histogram(df, x="Mark", range_x=[0,100], nbins = 20, labels={"mark": "Final Course Marks", "count": "Frequency"}), "", dash.no_update
         if len(df["Faculty"].unique()) == 1:
-            return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+            return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"}), "", dash.no_update
         return px.box(df, x="Faculty", y="Mark", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
 
 
