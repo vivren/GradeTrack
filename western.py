@@ -81,7 +81,11 @@ western_layout = html.Div([
 
     html.Div("", id="noDataError", style={"padding": 50, "color": "red"}),
 
-    dcc.Graph(id="westernGraph"),
+    dcc.Graph(id="westernGraph", clickData=None),
+
+    dcc.Graph(id="westernFacultyGraph" ,clickData=None),
+
+    dcc.Graph(id="westernCourseGraph")
 
 
 ], style={'backgroundColor': colors['background']})
@@ -177,16 +181,43 @@ def clearFilters(clearClicks):
     Output("westernTable", "children"),
     Input("westernTable", "data"),
 )
-def display_graph(data):
+def displayMainGraph(data):
     df = pd.DataFrame(data)
     if df.empty:
         return {}, "Filters Returned No Results", None
     else:
-        if len(df["Course"].unique()) == 1:
-            #return ff.create_distplot([df["Mark"]], ["Marks"]), "", dash.no_update
-            return px.histogram(df, x="Mark", range_x=[0,100], nbins = 20, labels={"mark": "Final Course Marks", "count": "Frequency"}), "", dash.no_update
-        if len(df["Faculty"].unique()) == 1:
-            return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"}), "", dash.no_update
         return px.box(df, x="Faculty", y="Mark", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+
+@app.callback(
+    Output("westernFacultyGraph", "figure"),
+    Input("westernGraph", "clickData"),
+    Input("westernTable", "data"),
+    Input("facultyFilter","value")
+)
+def displayFacultyGraph(clickData, data, facultyFilter):
+    df = pd.DataFrame(data)
+    if df.empty:
+        return {}
+    if facultyFilter != "":
+        return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
+    if clickData is not None:
+        return px.box(df.loc[df["Faculty"] == clickData["points"][0]["x"]], x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
+    return {}
+
+@app.callback(
+    Output("westernCourseGraph", "figure"),
+    Input("westernFacultyGraph", "clickData"),
+    Input("westernTable", "data"),
+    Input("courseNameFilter", "value")
+)
+def displayFacultyGraph(clickData, data, courseFilter):
+    df = pd.DataFrame(data)
+    if df.empty:
+        return {}
+    if courseFilter != "":
+        return px.histogram(df, x="Mark", range_x=[0,100], nbins = 20, labels={"Mark": "Final Course Marks", "count": "Frequency"})
+    if clickData is not None:
+        return px.histogram(df.loc[df["Course"] == clickData["points"][0]["x"]], x="Mark", range_x=[0,100], nbins = 20, labels={"Mark": "Final Course Marks", "count": "Frequency"})
+    return {}
 
 
