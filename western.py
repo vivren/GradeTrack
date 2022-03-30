@@ -186,13 +186,13 @@ def displayMainGraph(data):
     if df.empty:
         return {}, "Filters Returned No Results", None
     else:
-        return px.box(df, x="Faculty", y="Mark", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+        return px.box(df, x="Faculty", y="Mark", title="Grade Distribution By Faculty - Western University", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
 
 @app.callback(
     Output("westernFacultyGraph", "figure"),
     Input("westernGraph", "clickData"),
     Input("westernTable", "data"),
-    Input("facultyFilter","value")
+    Input("facultyFilter", "value")
 )
 def displayFacultyGraph(clickData, data, facultyFilter):
     df = pd.DataFrame(data)
@@ -201,7 +201,8 @@ def displayFacultyGraph(clickData, data, facultyFilter):
     if facultyFilter != "":
         return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
     if clickData is not None:
-        return px.box(df.loc[df["Faculty"] == clickData["points"][0]["x"]], x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
+        faculty = clickData["points"][0]["x"]
+        return px.box(df.loc[df["Faculty"] == faculty], x="Course", y="Mark", title=f"Grade Distribution By Course - {faculty}, Western University", category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
     return {}
 
 @app.callback(
@@ -215,9 +216,33 @@ def displayFacultyGraph(clickData, data, courseFilter):
     if df.empty:
         return {}
     if courseFilter != "":
-        return px.histogram(df, x="Mark", range_x=[0,100], nbins = 20, labels={"Mark": "Final Course Marks", "count": "Frequency"})
+        return ff.create_distplot([df["Mark"]], [df["Course"].iloc[0]], bin_size=2.5).update_layout(title_text=f"{df['Course'].iloc[0]} Grade Distribution - {df['Faculty'].iloc[0]}, Western University")
+        #return px.histogram(df, x="Mark", range_x=[0,100], nbins = 20, labels={"Mark": "Final Course Marks", "count": "Frequency"})
     if clickData is not None:
-        return px.histogram(df.loc[df["Course"] == clickData["points"][0]["x"]], x="Mark", range_x=[0,100], nbins = 20, labels={"Mark": "Final Course Marks", "count": "Frequency"})
+        course = clickData["points"][0]["x"]
+        return ff.create_distplot([df.loc[df["Course"] == course]["Mark"].tolist()], [df.loc[df["Course"] == course]["Course"].iloc[0]], bin_size=2.5).update_layout(title_text=f"{course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, Western University")
+       #return px.histogram(df.loc[df["Course"] == course], x="Mark", title=f"{course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].unique()[0]}, Western University", range_x=[0,100], nbins = 20, labels={"Mark": "Final Course Marks", "count": "Frequency"})
     return {}
 
+
+#
+# @app.callback(
+#     Output("westernFacultyGraph", "figure"),
+#     #Output("westernFacultyGraph", "clickData"),
+#     Input("westernGraph", "clickData"),
+#     Input("westernFacultyGraph", "clickData"),
+#     Input("westernTable", "data"),
+#     Input("facultyFilter","value")
+# )
+# def displayFacultyGraph(clickData, facultyClickData, data, facultyFilter):
+#     df = pd.DataFrame(data)
+#     if df.empty:
+#         return {}
+#     if facultyFilter != "":
+#         return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
+#     if clickData is not None:
+#         #if facultyClickData is not None:
+#          #   return px.box(df.loc[df["Faculty"] == clickData["points"][0]["x"]], x="Course", y="Mark", category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"}), facultyClickData["points"].append(clickData["points"])
+#         return px.box(df.loc[df["Faculty"] == clickData["points"][0]["x"]], x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"}), clickData
+#     return {}
 
