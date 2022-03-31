@@ -221,36 +221,26 @@ def displayCourseGraph(figure, clickData, data, courseFilter, graphData, labels)
     if df.empty:
         return {}
     if courseFilter != "":
-        return ff.create_distplot([df["Mark"]], [df["Course"].iloc[0]], bin_size=2.5).update_layout(title_text=f"{df['Course'].iloc[0]} Grade Distribution - {df['Faculty'].iloc[0]}, Western University")
+        return ff.create_distplot([df["Mark"]], [df["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{df['Course'].iloc[0]} Grade Distribution - {df['Faculty'].iloc[0]}, Western University")
     if clickData is not None:
         course = clickData["points"][0]["x"]
         if figure == {} or figure is None:
-            return ff.create_distplot([df.loc[df["Course"] == course]["Mark"].tolist()], [df.loc[df["Course"] == course]["Course"].iloc[0]], bin_size=2.5).update_layout(title_text=f"{course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, Western University")
+            return ff.create_distplot([df.loc[df["Course"] == course]["Mark"].tolist()], [df.loc[df["Course"] == course]["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, Western University")
         else:
-            originalData = figure["data"][0]["x"]
-            originalCourse = figure["data"][0]["name"]
-            return ff.create_distplot([originalData, df.loc[df["Course"] == course]["Mark"].tolist()], [originalCourse, course], bin_size=2.5).update_layout(title_text=f"{originalCourse}, {course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, Western University")
+            originalCourse = []
+            originalData = []
+            for i in range(1, len(figure["data"])):
+                originalCourse.append(figure["data"][-i]["name"])
+            for j in range(1, len(set(originalCourse))+1):
+                originalData.append(figure["data"][-j]["x"])
+            if course in originalCourse:
+                originalCourse = list(set(originalCourse))
+                for k in range(len(originalCourse)):
+                    if originalCourse[k] == course:
+                        originalData.pop(k)
+                originalCourse.remove(course)
+            else:
+                originalData.append(df.loc[df["Course"] == course]["Mark"].tolist())
+                originalCourse.append(course)
+            return ff.create_distplot(originalData, list(set(originalCourse)), bin_size=3).update_layout(title_text=f"{set(originalCourse)} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, Western University")
     return dash.no_update
-
-
-#
-# @app.callback(
-#     Output("westernFacultyGraph", "figure"),
-#     #Output("westernFacultyGraph", "clickData"),
-#     Input("westernGraph", "clickData"),
-#     Input("westernFacultyGraph", "clickData"),
-#     Input("westernTable", "data"),
-#     Input("facultyFilter","value")
-# )
-# def displayFacultyGraph(clickData, facultyClickData, data, facultyFilter):
-#     df = pd.DataFrame(data)
-#     if df.empty:
-#         return {}
-#     if facultyFilter != "":
-#         return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
-#     if clickData is not None:
-#         #if facultyClickData is not None:
-#          #   return px.box(df.loc[df["Faculty"] == clickData["points"][0]["x"]], x="Course", y="Mark", category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"}), facultyClickData["points"].append(clickData["points"])
-#         return px.box(df.loc[df["Faculty"] == clickData["points"][0]["x"]], x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"}), clickData
-#     return {}
-
