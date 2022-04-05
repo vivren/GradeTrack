@@ -41,26 +41,86 @@ home_layout = html.Div([
 
         html.Button("Add Mark", id="addHomeMarkButton", n_clicks=0),
 
-        html.Button("Clear Input", id="Clear input button", n_clicks=0)],
-        style={'backgroundColor': colors['background']}
-        ),
+        html.Button("Clear Input", id="Clear input button", n_clicks=0),
 
-    dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
-    html.Div(id='homeGradesTable', children=[
-        dash_table.DataTable(
-            id="homeTable",
-            columns=[],
-            data=[],
-            row_deletable=False,
-            sort_action="native",
-            sort_mode="multi",
-            page_action="none",
-            style_table={"height": "300px", "overflowY": "auto"},
-            style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
+        dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0)],
+
+    style={'backgroundColor': colors['background']}),
+
+    html.Div([
+        dbc.Button(
+            "Show Data",
+            id="collapseDataButton",
+            className="mb-3",
+            n_clicks=0,
+        ),
+        dbc.Collapse(
+            html.Div(id='homeGradesTable', children=[
+                dash_table.DataTable(
+                    id="homeTable",
+                    columns=[],
+                    data=[],
+                    row_deletable=False,
+                    sort_action="native",
+                    sort_mode="multi",
+                    sort_by=[{"column_id": "School", "direction": "asc"}, {"column_id":"Faculty", "direction":"asc"}, {"column_id":"Course", "direction":"asc"}, {"column_id":"Mark", "direction":"asc"}],
+                    page_action="none",
+                    style_table={"height": "300px", "overflowY": "auto"},
+                    style_cell={'textAlign': 'left', "minWidth": "100px", "width": "100px", "maxWidth": "100px"}
+                ),
+            ],
+        ),
+            id="collapseTable",
+            is_open=False,
         ),
     ]),
-    dcc.Graph(id="homeGraph", clickData=None)
-])
+
+    dcc.Checklist(id="homeGraphOptions", options=["Remove Outliers", "Show Statistics"]),
+
+    html.Div([
+        dcc.Graph(id="homeGraph", clickData=None),
+
+        dbc.Card(
+            dbc.CardBody(""),
+            className="mb-3",
+            id="homeGraphCard",
+            color="black",
+            inverse=True,
+            outline=True,
+        )
+    ])
+], style={'backgroundColor': colors['background'], "color": colors["text"]})
+
+@app.callback(
+    Output("collapseTable", "is_open"),
+    [Input("collapseDataButton", "n_clicks")],
+    [State("collapseTable", "is_open")],
+)
+def toggle_collapse(n, is_open):
+    if n:
+        return not is_open
+    return is_open
+
+@app.callback(
+    Output("homeGraphCard", "children"),
+    Input("homeGraphOptions", "value"),
+    Input("homeTable", "data"),
+)
+def showStatistics(value, data):
+    if value is not None:
+        if "Show Statistics" in value:
+            stats = pd.DataFrame(data)["Mark"].describe()
+            return dbc.CardBody(
+                [
+                    html.H4("Summary of Data", className="card-title"),
+                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
+                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
+                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
+                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
+                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                ]
+            )
+    return ""
 
 @app.callback(
     Output("homeSchoolInput", "options"),
@@ -121,14 +181,14 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
     )
 def display_graph(data):
     df = pd.DataFrame(data)
-    fig = px.box(df, x="School", y="Mark", category_orders={"name": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
+    fig = px.box(df, x="School", y="Mark", title="Grades by School", category_orders={"School": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
     return fig
 
-@app.callback(
-    Output("tabs", "active_tab"),
-    Input("homeGraph", "clickData"),
-)
-def switchTab(clickData):
-    if clickData is not None:
-        return clickData["points"][0]["x"].replace(" ", "") + "Tab"
-    return "homeTab"
+# @app.callback(
+#     Output("tabs", "active_tab"),
+#     Input("homeGraph", "clickData"),
+# )
+# def switchTab(clickData):
+#     if clickData is not None:
+#         return clickData["points"][0]["x"].replace(" ", "") + "Tab"
+#     return "homeTab"
