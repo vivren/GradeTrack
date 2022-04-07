@@ -1,16 +1,12 @@
 import dash
-from dash import Dash, html, dcc, Input, Output, dash_table, State
+from dash import html, dcc, Input, Output, dash_table, State
 import plotly.express as px
 import pandas as pd
 import plotly.figure_factory as ff
-from flask_sqlalchemy import SQLAlchemy
-from flask import Flask
 import dash_bootstrap_components as dbc
 import re
 from app import app
 from models import School, Faculty, Course, Mark, db
-from sqlalchemy.sql import text
-import numpy as np
 
 colors = {
     'background': '#111111',
@@ -64,27 +60,34 @@ school_layout = html.Div([
         html.Button("Add Mark", id="addSchoolMarkButton", n_clicks=0),
 
         html.Button("Clear Input", id="Clear input button", n_clicks=0),
-        ]),
 
-    html.Div([
-        html.H3(
-            children="All Grades"
-        ),
+        dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
 
-    dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
     ]),
 
-    html.Div(id='schoolTable', children=[
-        dash_table.DataTable(
-            id="schoolTable",
-            columns=[],
-            data=[],
-            row_deletable=False,
-            sort_action="native",
-            sort_mode="multi",
-            page_action="none",
-            style_table={"height": "300px", "overflowY": "auto"},
-            style_cell={'textAlign': 'left', "minWidth": "100px", "width": "800px", "maxWidth": "800px"}
+    html.Div([
+        dbc.Button(
+            "Show Data",
+            id="collapseDataButton",
+            className="mb-3",
+            n_clicks=0,
+        ),
+        dbc.Collapse(
+            html.Div(id='schoolTable', children=[
+                dash_table.DataTable(
+                    id="schoolTable",
+                    columns=[],
+                    data=[],
+                    row_deletable=False,
+                    sort_action="native",
+                    sort_mode="multi",
+                    page_action="none",
+                    style_table={"height": "300px", "overflowY": "auto"},
+                    style_cell={'textAlign': 'left', "minWidth": "100px", "width": "800px", "maxWidth": "800px"}
+                ),
+            ]),
+            id="collapseTable",
+            is_open=False,
         ),
     ]),
 
@@ -93,7 +96,7 @@ school_layout = html.Div([
             children="Graph Options"
         ),
 
-    dcc.Checklist(id="graphOptions", options=["Remove Outliers", "Show Statistics"])
+    dcc.Checklist(id="schoolGraphOptions", options=["Show Statistics"])
 
     ]),
 
@@ -101,9 +104,36 @@ school_layout = html.Div([
 
     dcc.Graph(id="schoolGraph", clickData=None),
 
+    dbc.Card(
+            dbc.CardBody(""),
+            className="mb-3",
+            id="schoolGraphCard",
+            color="black",
+            inverse=True,
+            outline=True,
+    ),
+
     dcc.Graph(id="schoolFacultyGraph", clickData=None),
 
-    dcc.Graph(id="schoolCourseGraph")
+    dbc.Card(
+            dbc.CardBody(""),
+            className="mb-3",
+            id="schoolFacultyGraphCard",
+            color="black",
+            inverse=True,
+            outline=True,
+    ),
+
+    dcc.Graph(id="schoolCourseGraph"),
+
+    dbc.Card(
+            dbc.CardBody(""),
+            className="mb-3",
+            id="schoolCourseGraphCard",
+            color="black",
+            inverse=True,
+            outline=True,
+    ),
 
 
 ], style={'backgroundColor': colors['background']})
@@ -114,7 +144,7 @@ school_layout = html.Div([
     Input("tabs", "active_tab"),
     Input("school", "children")
 )
-def updateFacultyFilter(schoolInput, school):
+def updateFacultyFilter(activeTab, school):
     faculties = db.session.query(Faculty.name).filter(School.id == Faculty.schoolID).filter(School.name == school).all()
     faculties = sorted([faculty for sublist in faculties for faculty in sublist])
     return faculties, faculties
@@ -200,10 +230,9 @@ def clearFilters(clearClicks):
     Output("noDataError", "children"),
     Output("schoolTable", "children"),
     Input("schoolTable", "data"),
-    Input("graphOptions", "value"),
     Input("school", "children")
 )
-def displayMainGraph(data, value, school):
+def displayMainGraph(data, school):
     df = pd.DataFrame(data)
     if df.empty:
         return {}, "Filters Returned No Results", None
@@ -211,25 +240,68 @@ def displayMainGraph(data, value, school):
         return px.box(df, x="Faculty", y="Mark", title=f"Grade Distribution By Faculty - {school}", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
 
 @app.callback(
+    Output("schoolGraphCard", "children"),
+    Input("schoolGraphOptions", "value"),
+    Input("schoolTable", "data"),
+)
+def showSchoolStatistics(value, data):
+    if value is not None:
+        if "Show Statistics" in value:
+            stats = pd.DataFrame(data)["Mark"].describe()
+            return dbc.CardBody(
+                [
+                    html.H4("Summary of Data", className="card-title"),
+                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
+                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
+                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
+                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
+                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                ]
+            )
+    return ""
+
+@app.callback(
     Output("schoolFacultyGraph", "figure"),
-    Input("schoolGraph", "clickData"),
+    [Input("schoolGraph", "clickData"),
     Input("schoolTable", "data"),
     Input("facultyFilter", "value"),
-    Input("schoolCourseGraph", "figure"),
-    Input("school", "children")
+    Input("school", "children")]
 )
-def displayFacultyGraph(clickData, data, facultyFilter, courseGraph, school):
+def displayFacultyGraph(clickData, data, facultyFilter, school):
     df = pd.DataFrame(data)
     if df.empty:
         return {}
-#    if facultyFilter != "":
-  #      return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
     if clickData is not None:
         faculty = clickData["points"][0]["x"]
-        return px.box(df.loc[df["Faculty"] == faculty], x="Course", y="Mark", title=f"Grade Distribution By Course - {faculty}, {school}", category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
+        df = df.loc[df["Faculty"] == faculty]
+        return px.box(df, x="Course", y="Mark", category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {faculty}, {school}", labels={"mark": "Final Course Marks"})
     if facultyFilter != "":
-        return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
+        return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {df['Course'].unique().tolist()[0]}, {school}", labels={"mark": "Final Course Marks"})
     return {}
+
+@app.callback(
+    Output("schoolFacultyGraphCard", "children"),
+    Input("schoolGraphOptions", "value"),
+    Input("schoolFacultyGraph", "figure"),
+    Input("schoolTable", "data")
+)
+def showFacultyStatistics(value, figure, data):
+    if value is not None and figure != {}:
+        if "Show Statistics" in value:
+            courses = list(set(figure["data"][0]["x"]))
+            df = pd.DataFrame(data)
+            stats = df.loc[df["Course"].isin(courses)]["Mark"].describe()
+            return dbc.CardBody(
+                [
+                    html.H4("Summary of Data", className="card-title"),
+                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
+                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
+                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
+                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
+                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                ]
+            )
+    return ""
 
 @app.callback(
     Output("schoolCourseGraph", "figure"),
@@ -270,3 +342,27 @@ def displayCourseGraph(figure, clickData, data, courseFilter, school):
             return ff.create_distplot(originalData, list(set(originalCourse)), bin_size=3).update_layout(title_text=f"{set(originalCourse)} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, {school}")
     return dash.no_update
 
+@app.callback(
+    Output("schoolCourseGraphCard", "children"),
+    Input("schoolGraphOptions", "value"),
+    Input("schoolCourseGraph", "figure"),
+    Input("schoolTable", "data")
+)
+def showCourseStatistics(value, figure, data):
+    if value is not None and figure != {}:
+        if "Show Statistics" in value:
+            courses = figure["layout"]["title"]["text"].split(" Grade", 1)[0].replace("'", "").replace("{", "").replace("}", "").split(", ")
+            print(courses)
+            df = pd.DataFrame(data)
+            stats = df.loc[df["Course"].isin(courses)]["Mark"].describe()
+            return dbc.CardBody(
+                [
+                    html.H4("Summary of Data", className="card-title"),
+                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
+                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
+                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
+                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
+                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                ]
+            )
+    return ""
