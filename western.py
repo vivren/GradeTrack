@@ -198,8 +198,6 @@ def displayFacultyGraph(clickData, data, facultyFilter):
     df = pd.DataFrame(data)
     if df.empty:
         return {}
-#    if facultyFilter != "":
-  #      return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
     if clickData is not None:
         faculty = clickData["points"][0]["x"]
         return px.box(df.loc[df["Faculty"] == faculty], x="Course", y="Mark", title=f"Grade Distribution By Course - {faculty}, Western University", category_orders={"Course": sorted(df['Course'].unique())}, labels={"mark": "Final Course Marks", "count": "Frequency"})
