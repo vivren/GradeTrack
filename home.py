@@ -1,9 +1,6 @@
-import dash
 from dash import Dash, html, dcc, Input, Output, dash_table, State
 import plotly.express as px
 import pandas as pd
-from flask_sqlalchemy import SQLAlchemy
-from flask import Flask
 import dash_bootstrap_components as dbc
 import re
 from app import app
@@ -73,9 +70,17 @@ home_layout = html.Div([
             id="collapseTable",
             is_open=False,
         ),
+
     ]),
 
-    dcc.Checklist(id="homeGraphOptions", options=["Remove Outliers", "Show Statistics"]),
+    html.Div([
+        html.H3(
+            children="Graph Options"
+        ),
+
+        dcc.Checklist(id="homeGraphOptions", options=["Show Statistics"])
+
+    ]),
 
     html.Div([
         dcc.Graph(id="homeGraph", clickData=None),
