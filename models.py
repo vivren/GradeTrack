@@ -1,5 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-import pandas as pd
 from app import app
 
 db = SQLAlchemy(app.server)
@@ -36,6 +35,3 @@ class Mark(db.Model):
     id = db.Column(db.Integer, nullable=False, primary_key=True)
     mark = db.Column(db.Integer, nullable=False)
     courseID = db.Column(db.Integer, db.ForeignKey("course.id"), nullable=False)
-
-#data = db.session.query(School.name, Course.courseCode, Mark.mark).join(Course, School.id == Course.schoolID).join(Mark, Mark.courseID == Course.id).all()
-#df = pd.DataFrame(data)
