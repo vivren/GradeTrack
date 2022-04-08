@@ -6,74 +6,66 @@ from school import school_layout
 from app import app
 
 colors = {
-    'background': '#111111',
-    'text': '#7FDBFF',
+    'background': '#001D3D',
+    "text": "#CAF0F8",
 }
 
 selectedTabStyle = {
-    "background": '#7FDBFF',
-    'color': 'white',
+    "background": "linear-gradient(#e66465, #9198e5)",
     'font-weight': 600,
     'align-items': 'center',
     'justify-content': 'center',
     'border-radius': '4px',
-    'padding': '6px'
 }
 
-app_tabs = html.Div(
+text = {
+    "font-family": 'Sora',
+}
+
+tabs = html.Div(
     [
         dbc.Tabs(
             [
-                dbc.Tab(label="Home", tab_id="homeTab", active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                dbc.Tab(label="Home", tab_id="homeTab", active_tab_style=selectedTabStyle, active_label_style={"colour": "0077B6"},                      tab_style={"padding": "5px"}, label_style={"colour": "#0077B6"}),
                 dbc.Tab(label="Queens University", tab_id="QueensUniversityTab", active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                        tab_style={"padding": "5px"}, label_style={"colour": "#0077B6"}),
                 dbc.Tab(label="University of Toronto", tab_id="UniversityofTorontoTab",
                         active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                        tab_style={"padding": "5px"},  label_style={"colour": colors["text"]}),
                 dbc.Tab(label="University of Waterloo", tab_id="UniversityofWaterlooTab",
                         active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                        tab_style={"padding": "5px"},  label_style={"colour": colors["text"]}),
                 dbc.Tab(label="University of Western Ontario", tab_id="UniversityofWesternOntarioTab",
                         active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                        tab_style={"padding": "5px"},  label_style={"colour": colors["text"]}),
                 dbc.Tab(label="Wilfred Laurier University", tab_id="WilfredLaurierUniversityTab",
                         active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                        tab_style={"padding": "5px"},  label_style={"colour": colors["text"]}),
                 dbc.Tab(label="York University", tab_id="YorkUniversityTab", active_tab_style=selectedTabStyle,
-                        labelClassName="text-success font-weight-bold", activeLabelClassName="text-danger",
-                        tab_style={"padding": "5px"}),
+                        tab_style={"padding": "5px"},  label_style={"colour": "#0077B6"}),
             ],
             id="tabs",
             active_tab="homeTab",
         ),
-    ], className="mt-3"
+    ],
 )
 
 app.layout = html.Div([
     html.Div(children=[
 
-        html.Div("", id="school", style={"color": "black"}),
+        html.Div("", id="school"),
 
-        html.H1(
-            children='GradeTrack',
-        ),
+        html.H1(children='GradeTrack'),
 
-        html.H5(
-            children="Ontario University Course Averages"),
+        html.H5(children="Ontario University Course Averages"),
 
-        dbc.Row(dbc.Col(app_tabs, width=12), className="mb-3"),
+        dbc.Row(tabs, justify="center"),
     ]),
 
-    html.Div(id='content', children=[]),
-], style={'backgroundColor': colors['background'], "color": colors['text'], "textAlign": "center",
-          "font-family": 'Trebuchet MS', "padding": "10px"})
+    html.Div(id='content', children=[])],
+
+    style={'backgroundColor': colors['background'], "color": colors['text'], "textAlign": "center",
+        "font-family": "Sora", "padding": "10px"})
 
 @app.callback(
     Output("school", "children"),
