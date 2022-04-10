@@ -7,42 +7,50 @@ from app import app
 from models import School, Faculty, Course, Mark, db
 
 colors = {
-    'background': '#111111',
-    'text': '#7FDBFF'
+    'background': '#001D3D',
+    "text": "#48CAE4",
 }
 
 home_layout = html.Div([
 
-    html.Div([
-        dcc.Dropdown([],
-            id="homeSchoolInput",
-            placeholder="Select your school"),
-
-        dcc.Dropdown([],
-            id="homeFacultyInput",
-            placeholder="Select school to see faculties"),
-
-        dcc.Input(
-            id="homeCourseInput",
-            placeholder="Enter course code",
-            value="",
-            style={"padding": 10}
+    dbc.Row([
+        dbc.Col(
+            dbc.DropdownMenu([],
+                id="homeSchoolInput",
+                label="School",
+                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "padding-top": "10px", "width": "150px"},
+            )
         ),
-
-        dcc.Input(
-            id="homeGradeInput",
-            placeholder="Enter course grade",
-            value='',
-            style={"padding": 10}
+        dbc.Col(
+            dbc.DropdownMenu([],
+                id="homeFacultyInput",
+                label="Faculty",
+                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "padding-top": "10px", "width": "150px"},
+            )
         ),
-
-        html.Button("Add Mark", id="addHomeMarkButton", n_clicks=0),
-
-        html.Button("Clear Input", id="Clear input button", n_clicks=0),
-
-        dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0)],
-
-    style={'backgroundColor': colors['background']}),
+        dbc.Col(
+            dbc.Input(
+                id="homeCourseInput",
+                placeholder="Enter course code",
+                value="",
+                #style={"padding": 10}
+            )
+        ),
+        dbc.Col(
+            dbc.Input(
+                id="homeGradeInput",
+                placeholder="Enter course grade",
+                value='',
+                #style={"padding": 10}
+            )
+        ),
+        dbc.Col(
+            dbc.Button("Add Mark", id="addHomeMarkButton", n_clicks=0, style={"background": "#0096C7"})
+        ),
+        dbc.Col(
+            dbc.Button("Clear Input", id="Clear input button", n_clicks=0, style={"background": "#0096C7"})
+        ),
+        dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0)]),
 
     html.Div([
         dbc.Button(
@@ -70,31 +78,23 @@ home_layout = html.Div([
             id="collapseTable",
             is_open=False,
         ),
-
     ]),
 
     html.Div([
-        html.H3(
-            children="Graph Options"
-        ),
-
-        dcc.Checklist(id="homeGraphOptions", options=["Show Statistics"])
-
-    ]),
-
-    html.Div([
-        dcc.Graph(id="homeGraph", clickData=None),
+        dcc.Graph(figure={}, id="homeGraph", clickData=None),
 
         dbc.Card(
             dbc.CardBody(""),
             className="mb-3",
             id="homeGraphCard",
-            color="black",
+            color=colors["background"],
             inverse=True,
             outline=True,
-        )
+        ),
+
+        dcc.Checklist(id="homeGraphOptions", options=["Show Statistics"], style={"align": "right"})
     ])
-], style={'backgroundColor': colors['background'], "color": colors["text"]})
+], style={'backgroundColor': colors['background'], "color": colors["text"], "font-family": "Epilogue"})
 
 @app.callback(
     Output("collapseTable", "is_open"),
@@ -187,7 +187,7 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
 def display_graph(data):
     df = pd.DataFrame(data)
     fig = px.box(df, x="School", y="Mark", title="Grades by School", category_orders={"School": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
-    return fig
+    return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF")
 
 # @app.callback(
 #     Output("tabs", "active_tab"),
