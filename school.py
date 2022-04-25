@@ -4,14 +4,17 @@ import plotly.express as px
 import pandas as pd
 import plotly.figure_factory as ff
 import dash_bootstrap_components as dbc
+import dash_mantine_components as dmc
 import re
 from app import app
 from models import School, Faculty, Course, Mark, db
 
 colors = {
-    'background': '#111111',
-    'text': '#7FDBFF'
+    'background': '#001D3D',
+    "titleText": "#48CAE4",
+    "text": "#0096C7"
 }
+
 school_layout = html.Div([
     # html.Div(style={'backgroundColor': colors['background']}, children=[
     #     html.H2(
@@ -24,42 +27,48 @@ school_layout = html.Div([
     # ]),
 
     html.Div([
-        html.H3(
+        html.H5(
             children="Filter Data",
+            style={"color": colors["titleText"]}
         ),
 
         dcc.Checklist(["1st Year", "2nd Year", "3rd Year", "4th Year"], id="courseYearFilter"),
 
-        dcc.Dropdown([], placeholder="Filter by Faculty", id="facultyFilter", multi=True),
-        dcc.Dropdown([], placeholder="Filter by Course Code", id="courseNameFilter", multi=True),
+        dcc.Dropdown([], placeholder="Filter by Faculty", id="facultyFilter", multi=True, style={"width": "30%"}),
+        dcc.Dropdown([], placeholder="Filter by Course Code", id="courseNameFilter", multi=True, style={"width": "30%"}),
 
-        html.Button("Clear Filters", id="clearFilterButton", n_clicks=0)
-    ]),
+        dbc.Button(
+            "Clear Filters",
+            id="clearFilterButton",
+            className="mb-3",
+            n_clicks=0,
+        )]),
 
     html.Div([
-        html.H3(
-            children="Add Mark"
-        ),
+        html.H5(
+            children="Add Mark",
+            style = {"color": colors["titleText"]}
+),
 
         dcc.Dropdown([], placeholder="Select Course Faculty", id="schoolFacultyInput", multi=True),
 
-        dcc.Input(
+        dbc.Input(
             id="schoolCourseInput",
             placeholder="Enter course code",
             value="",
             style={"padding": 10}
         ),
 
-        dcc.Input(
+        dbc.Input(
             id="schoolGradeInput",
             placeholder="Enter course grade",
             value='',
             style={"padding": 10}
         ),
 
-        html.Button("Add Mark", id="addSchoolMarkButton", n_clicks=0),
+        dbc.Button("Add Mark", id="addSchoolMarkButton", n_clicks=0, style={"background": "#0096C7"}),
 
-        html.Button("Clear Input", id="Clear input button", n_clicks=0),
+        dbc.Button("Clear Input", id="clearSchoolInputButton", n_clicks=0, style={"background": "#0096C7"}),
 
         dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
 
@@ -92,11 +101,8 @@ school_layout = html.Div([
     ]),
 
     html.Div([
-        html.H3(
-            children="Graph Options"
-        ),
 
-    dcc.Checklist(id="schoolGraphOptions", options=["Show Statistics"])
+    dcc.Checklist(id="schoolGraphOptions", options=["Show Graph Statistics"])
 
     ]),
 
@@ -108,7 +114,6 @@ school_layout = html.Div([
             dbc.CardBody(""),
             className="mb-3",
             id="schoolGraphCard",
-            color="black",
             inverse=True,
             outline=True,
     ),
@@ -119,7 +124,6 @@ school_layout = html.Div([
             dbc.CardBody(""),
             className="mb-3",
             id="schoolFacultyGraphCard",
-            color="black",
             inverse=True,
             outline=True,
     ),
@@ -130,13 +134,12 @@ school_layout = html.Div([
             dbc.CardBody(""),
             className="mb-3",
             id="schoolCourseGraphCard",
-            color="black",
             inverse=True,
             outline=True,
     ),
 
 
-], style={'backgroundColor': colors['background']})
+], style={'backgroundColor': colors['background'], "color": colors["text"], "font-family": "Epilogue"})
 
 @app.callback(
     Output("schoolFacultyInput", "options"),
@@ -237,7 +240,8 @@ def displayMainGraph(data, school):
     if df.empty:
         return {}, "Filters Returned No Results", None
     else:
-        return px.box(df, x="Faculty", y="Mark", title=f"Grade Distribution By Faculty - {school}", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"}), "", dash.no_update
+        fig = px.box(df, x="Faculty", y="Mark", title=f"Grade Distribution By Faculty - {school}", category_orders={"Faculty": sorted(df['Faculty'].unique())}, labels={"mark": "Final Course Marks"})
+        return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF"), "", dash.no_update
 
 @app.callback(
     Output("schoolGraphCard", "children"),
@@ -274,9 +278,13 @@ def displayFacultyGraph(clickData, data, facultyFilter, school):
     if clickData is not None:
         faculty = clickData["points"][0]["x"]
         df = df.loc[df["Faculty"] == faculty]
-        return px.box(df, x="Course", y="Mark", category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {faculty}, {school}", labels={"mark": "Final Course Marks"})
+        fig = px.box(df, x="Course", y="Mark", category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {faculty}, {school}", labels={"mark": "Final Course Marks"})
+        return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF")
+
     if facultyFilter != "":
-        return px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {df['Course'].unique().tolist()[0]}, {school}", labels={"mark": "Final Course Marks"})
+        fig = px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {df['Course'].unique().tolist()[0]}, {school}", labels={"mark": "Final Course Marks"})
+        return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue",
+                                 font_color="#90E0EF")
     return {}
 
 @app.callback(
@@ -316,11 +324,13 @@ def displayCourseGraph(figure, clickData, data, courseFilter, school):
     if df.empty:
         return {}
     if courseFilter != "":
-        return ff.create_distplot([df["Mark"]], [df["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{df['Course'].iloc[0]} Grade Distribution - {df['Faculty'].iloc[0]}, {school}")
+        fig = ff.create_distplot([df["Mark"]], [df["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{df['Course'].iloc[0]} Grade Distribution - {df['Faculty'].iloc[0]}, {school}")
     if clickData is not None:
         course = clickData["points"][0]["x"]
         if figure == {} or figure is None:
-            return ff.create_distplot([df.loc[df["Course"] == course]["Mark"].tolist()], [df.loc[df["Course"] == course]["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, {school}")
+            fig = ff.create_distplot([df.loc[df["Course"] == course]["Mark"].tolist()], [df.loc[df["Course"] == course]["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{course} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, {school}")
+            return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue",
+                                     font_color="#90E0EF")
         else:
             originalCourse = []
             originalData = []
@@ -339,7 +349,9 @@ def displayCourseGraph(figure, clickData, data, courseFilter, school):
             else:
                 originalData.append(df.loc[df["Course"] == course]["Mark"].tolist())
                 originalCourse.append(course)
-            return ff.create_distplot(originalData, list(set(originalCourse)), bin_size=3).update_layout(title_text=f"{set(originalCourse)} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, {school}")
+            fig = ff.create_distplot(originalData, list(set(originalCourse)), bin_size=3).update_layout(title_text=f"{set(originalCourse)} Grade Distribution - {df.loc[df['Course'] == course]['Faculty'].iloc[0]}, {school}")
+        return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue",
+                                 font_color="#90E0EF")
     return dash.no_update
 
 @app.callback(

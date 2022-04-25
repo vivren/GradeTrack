@@ -8,7 +8,8 @@ from models import School, Faculty, Course, Mark, db
 
 colors = {
     'background': '#001D3D',
-    "text": "#48CAE4",
+    "titleText": "#48CAE4",
+    "text": "#0096C7"
 }
 
 home_layout = html.Div([
@@ -18,14 +19,14 @@ home_layout = html.Div([
             dbc.DropdownMenu([],
                 id="homeSchoolInput",
                 label="School",
-                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "padding-top": "10px", "width": "150px"},
+                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "width": "150px"},
             )
         ),
         dbc.Col(
             dbc.DropdownMenu([],
                 id="homeFacultyInput",
                 label="Faculty",
-                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "padding-top": "10px", "width": "150px"},
+                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "width": "150px"},
             )
         ),
         dbc.Col(
@@ -33,7 +34,6 @@ home_layout = html.Div([
                 id="homeCourseInput",
                 placeholder="Enter course code",
                 value="",
-                #style={"padding": 10}
             )
         ),
         dbc.Col(
@@ -41,24 +41,29 @@ home_layout = html.Div([
                 id="homeGradeInput",
                 placeholder="Enter course grade",
                 value='',
-                #style={"padding": 10}
             )
         ),
         dbc.Col(
-            dbc.Button("Add Mark", id="addHomeMarkButton", n_clicks=0, style={"background": "#0096C7"})
+            dbc.Button("Add Mark", id="addHomeMarkButton", n_clicks=0, style={"background": colors["text"]})
         ),
         dbc.Col(
-            dbc.Button("Clear Input", id="Clear input button", n_clicks=0, style={"background": "#0096C7"})
+            dbc.Button("Clear Input", id="Clear input button", n_clicks=0, style={"background": colors["text"]})
         ),
         dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0)]),
 
     html.Div([
-        dbc.Button(
-            "Show Data",
-            id="collapseDataButton",
-            className="mb-3",
-            n_clicks=0,
+
+        dbc.Checklist(
+            id="homeGraphOptions",
+            options=[
+                {"label": "Show Data", "value": 1},
+                {"label": "Show Graph Statistics", "value": 2}
+            ],
+            style={"color": colors["text"], "padding-top": "10px"},
+            inline=True,
+            switch=True,
         ),
+
         dbc.Collapse(
             html.Div(id='homeGradesTable', children=[
                 dash_table.DataTable(
@@ -91,19 +96,18 @@ home_layout = html.Div([
             inverse=True,
             outline=True,
         ),
-
-        dcc.Checklist(id="homeGraphOptions", options=["Show Statistics"], style={"align": "right"})
     ])
 ], style={'backgroundColor': colors['background'], "color": colors["text"], "font-family": "Epilogue"})
 
 @app.callback(
     Output("collapseTable", "is_open"),
-    [Input("collapseDataButton", "n_clicks")],
+    [Input("homeGraphOptions", "value")],
     [State("collapseTable", "is_open")],
 )
-def toggle_collapse(n, is_open):
-    if n:
-        return not is_open
+def toggle_collapse(value, is_open):
+    if value is not None:
+        if "Show Data" in value:
+            return not is_open
     return is_open
 
 @app.callback(
@@ -113,7 +117,7 @@ def toggle_collapse(n, is_open):
 )
 def showStatistics(value, data):
     if value is not None:
-        if "Show Statistics" in value:
+        if "Show Graph Statistics" in value:
             stats = pd.DataFrame(data)["Mark"].describe()
             return dbc.CardBody(
                 [
@@ -187,7 +191,7 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
 def display_graph(data):
     df = pd.DataFrame(data)
     fig = px.box(df, x="School", y="Mark", title="Grades by School", category_orders={"School": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
-    return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF")
+    return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF", title_color=colors["titleText"])
 
 # @app.callback(
 #     Output("tabs", "active_tab"),
