@@ -16,70 +16,93 @@ colors = {
 }
 
 school_layout = html.Div([
-    # html.Div(style={'backgroundColor': colors['background']}, children=[
-    #     html.H2(
-    #         children=school,
-    #         id="title",
-    #         style={
-    #             'textAlign': 'center',
-    #             'color': colors['text']
-    #         })
-    # ]),
-
     html.Div([
         html.H5(
             children="Filter Data",
-            style={"color": colors["titleText"]}
+            style={"color": colors["titleText"], "padding-top": "20px"}
         ),
+        dcc.Checklist(
+            ["1st Year", "2nd Year", "3rd Year", "4th Year"],
+            id="courseYearFilter"),
+    ]),
+    dbc.Row([
+        dbc.Col(
+            dcc.Dropdown([],
+                placeholder="Filter by Faculty",
+                id="facultyFilter",
+                multi=True,
+                style={"width": "200px"}),
+        ),
+        dbc.Col(
+            dcc.Dropdown([],
+                placeholder="Filter by Course Code",
+                id="courseNameFilter",
+                multi=True,
+                style={"width": "200px"}),
+        ),
+        dbc.Col(
+            dbc.Button(
+                "Clear Filters",
+                id="clearFilterButton",
+                className="mb-3",
+                n_clicks=0,
+                size="sm",
+                style={"background": colors["text"]},
+            ),
+        ),
+    ], style={"display": "inline-flex", "align-items": "center"},),
 
-        dcc.Checklist(["1st Year", "2nd Year", "3rd Year", "4th Year"], id="courseYearFilter"),
-
-        dcc.Dropdown([], placeholder="Filter by Faculty", id="facultyFilter", multi=True, style={"width": "30%"}),
-        dcc.Dropdown([], placeholder="Filter by Course Code", id="courseNameFilter", multi=True, style={"width": "30%"}),
-
-        dbc.Button(
-            "Clear Filters",
-            id="clearFilterButton",
-            className="mb-3",
-            n_clicks=0,
-        )]),
-
-    html.Div([
         html.H5(
             children="Add Mark",
-            style = {"color": colors["titleText"]}
-),
-
-        dcc.Dropdown([], placeholder="Select Course Faculty", id="schoolFacultyInput", multi=True),
-
-        dbc.Input(
-            id="schoolCourseInput",
-            placeholder="Enter course code",
-            value="",
-            style={"padding": 10}
+            style={"color": colors["titleText"], "padding-top": "20px"}
         ),
-
-        dbc.Input(
-            id="schoolGradeInput",
-            placeholder="Enter course grade",
-            value='',
-            style={"padding": 10}
+    dbc.Row([
+        dbc.Col(
+            dcc.Dropdown([],
+                placeholder="Select Faculty",
+                id="schoolFacultyInput",
+                multi=True,
+                style={"width": "200px"}
+            ),
         ),
-
-        dbc.Button("Add Mark", id="addSchoolMarkButton", n_clicks=0, style={"background": "#0096C7"}),
-
-        dbc.Button("Clear Input", id="clearSchoolInputButton", n_clicks=0, style={"background": "#0096C7"}),
-
+        dbc.Col(
+            dbc.Input(
+                id="schoolCourseInput",
+                placeholder="Course Code",
+                value="",
+                style={"width": "150px"}
+            ),
+        ),
+        dbc.Col(
+            dbc.Input(
+                id="schoolGradeInput",
+                placeholder="Course Grade",
+                value='',
+                style={"width": "150px"}
+            ),
+        ),
+        dbc.Col(
+            dbc.Button(
+                "Add Mark",
+                id="addSchoolMarkButton",
+                n_clicks=0,
+                size="sm",
+                style={"background": colors["text"]}
+            ),
+        ),
         dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
-
-    ]),
-
+    ], style={"display": "inline-flex", "align-items": "center"},
+    ),
     html.Div([
-        dbc.Button(
-            "Show Data",
-            id="collapseDataButton",
-            className="mb-3",
-            n_clicks=0,
+        dbc.Checklist(
+            id="schoolGraphOptions",
+            options=[
+                {"label": "Show Data", "value": 1},
+                {"label": "Show Graph Statistics", "value": 2}
+            ],
+            style={"color": colors["text"], "padding-top": "10px", "padding-bottom": "20px"},
+            inline=True,
+            switch=True,
         ),
         dbc.Collapse(
             html.Div(id='schoolTable', children=[
@@ -95,51 +118,61 @@ school_layout = html.Div([
                     style_cell={'textAlign': 'left', "minWidth": "100px", "width": "800px", "maxWidth": "800px"}
                 ),
             ]),
-            id="collapseTable",
+            id="schoolCollapseTable",
             is_open=False,
         ),
     ]),
-
     html.Div([
-
-    dcc.Checklist(id="schoolGraphOptions", options=["Show Graph Statistics"])
-
-    ]),
-
-    html.Div("", id="noDataError", style={"padding": 50, "color": "red"}),
-
-    dcc.Graph(id="schoolGraph", clickData=None),
-
-    dbc.Card(
+        html.Div(
+            "",
+            id="noDataError",
+            style={"color": "red"},
+        ),
+       dcc.Graph(
+            id="schoolGraph",
+            clickData=None
+        ),
+        dbc.Card(
             dbc.CardBody(""),
             className="mb-3",
             id="schoolGraphCard",
             inverse=True,
             outline=True,
-    ),
-
-    dcc.Graph(id="schoolFacultyGraph", clickData=None),
-
-    dbc.Card(
+        ),
+        dcc.Graph(
+            id="schoolFacultyGraph",
+            clickData=None
+        ),
+        dbc.Card(
             dbc.CardBody(""),
             className="mb-3",
             id="schoolFacultyGraphCard",
             inverse=True,
             outline=True,
-    ),
-
-    dcc.Graph(id="schoolCourseGraph"),
-
-    dbc.Card(
+        ),
+        dcc.Graph(
+            id="schoolCourseGraph"
+        ),
+        dbc.Card(
             dbc.CardBody(""),
             className="mb-3",
             id="schoolCourseGraphCard",
             inverse=True,
             outline=True,
-    ),
-
-
+        ),
+    ]),
 ], style={'backgroundColor': colors['background'], "color": colors["text"], "font-family": "Epilogue"})
+
+@app.callback(
+    Output("schoolCollapseTable", "is_open"),
+    [Input("schoolGraphOptions", "value")],
+    [State("collapseTable", "is_open")],
+)
+def toggle_collapse(value, is_open):
+    if value is not None:
+        if "Show Data" in value:
+            return not is_open
+    return is_open
 
 @app.callback(
     Output("schoolFacultyInput", "options"),

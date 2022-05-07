@@ -13,57 +13,66 @@ colors = {
 }
 
 home_layout = html.Div([
-
+    html.H5(
+            children="Add Mark",
+            style={"color": colors["titleText"], "padding-top": "20px"}
+        ),
     dbc.Row([
         dbc.Col(
-            dbc.DropdownMenu([],
+            dcc.Dropdown([],
+                placeholder="Select School",
                 id="homeSchoolInput",
-                label="School",
-                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "width": "150px"},
-            )
+                multi=True,
+                style={"width": "200px"}
+            ),
         ),
         dbc.Col(
-            dbc.DropdownMenu([],
+            dcc.Dropdown([],
+                placeholder="Select Faculty",
                 id="homeFacultyInput",
-                label="Faculty",
-                toggle_style={"background": "#FFFFFF", "color": "#0096C7", "width": "150px"},
-            )
+                multi=True,
+                style={"width": "200px"}
+            ),
         ),
         dbc.Col(
             dbc.Input(
                 id="homeCourseInput",
-                placeholder="Enter course code",
+                placeholder="Course Code",
                 value="",
-            )
+                style={"width": "150px"}
+            ),
         ),
         dbc.Col(
             dbc.Input(
                 id="homeGradeInput",
-                placeholder="Enter course grade",
+                placeholder="Course Grade",
                 value='',
-            )
+                style={"width": "150px"}
+            ),
         ),
         dbc.Col(
-            dbc.Button("Add Mark", id="addHomeMarkButton", n_clicks=0, style={"background": colors["text"]})
+            dbc.Button(
+                "Add Mark",
+                id="addHomeMarkButton",
+                n_clicks=0,
+                size="sm",
+                style={"background": colors["text"]}
+            ),
         ),
-        dbc.Col(
-            dbc.Button("Clear Input", id="Clear input button", n_clicks=0, style={"background": colors["text"]})
-        ),
-        dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0)]),
-
+        dcc.Interval(id='interval_pg', interval=99999999 * 7, n_intervals=0),
+    ], style={"display": "inline-flex", "align-items": "center"},
+    ),
     html.Div([
-
         dbc.Checklist(
             id="homeGraphOptions",
             options=[
                 {"label": "Show Data", "value": 1},
                 {"label": "Show Graph Statistics", "value": 2}
             ],
-            style={"color": colors["text"], "padding-top": "10px"},
+            style={"color": colors["text"], "padding-top": "10px", "padding-bottom": "20px"},
             inline=True,
             switch=True,
         ),
-
         dbc.Collapse(
             html.Div(id='homeGradesTable', children=[
                 dash_table.DataTable(
@@ -80,7 +89,7 @@ home_layout = html.Div([
                 ),
             ],
         ),
-            id="collapseTable",
+            id="homeCollapseTable",
             is_open=False,
         ),
     ]),
@@ -100,7 +109,7 @@ home_layout = html.Div([
 ], style={'backgroundColor': colors['background'], "color": colors["text"], "font-family": "Epilogue"})
 
 @app.callback(
-    Output("collapseTable", "is_open"),
+    Output("homeCollapseTable", "is_open"),
     [Input("homeGraphOptions", "value")],
     [State("collapseTable", "is_open")],
 )
