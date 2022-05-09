@@ -1,4 +1,5 @@
-from dash import Dash, html, dcc, Input, Output, dash_table, State
+import dash
+from dash import html, dcc, Input, Output, dash_table, State
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
@@ -23,7 +24,7 @@ home_layout = html.Div([
                 placeholder="Select School",
                 id="homeSchoolInput",
                 multi=True,
-                style={"width": "200px"}
+                style={"width": "200px", "font-size": "12px"}
             ),
         ),
         dbc.Col(
@@ -31,15 +32,14 @@ home_layout = html.Div([
                 placeholder="Select Faculty",
                 id="homeFacultyInput",
                 multi=True,
-                style={"width": "200px"}
-            ),
+                style={"width": "200px", "font-size": "12px", "text-align": "center"}),
         ),
         dbc.Col(
             dbc.Input(
                 id="homeCourseInput",
                 placeholder="Course Code",
                 value="",
-                style={"width": "150px"}
+                style={"width": "120px", "font-size": "12px"}
             ),
         ),
         dbc.Col(
@@ -47,7 +47,7 @@ home_layout = html.Div([
                 id="homeGradeInput",
                 placeholder="Course Grade",
                 value='',
-                style={"width": "150px"}
+                style={"width": "120px", "font-size": "12px"}
             ),
         ),
         dbc.Col(
@@ -102,6 +102,7 @@ home_layout = html.Div([
             className="mb-3",
             id="homeGraphCard",
             color=colors["background"],
+            style={"color": colors["text"], "white-space": "pre-line", "font-size": "12px"},
             inverse=True,
             outline=True,
         ),
@@ -111,13 +112,13 @@ home_layout = html.Div([
 @app.callback(
     Output("homeCollapseTable", "is_open"),
     [Input("homeGraphOptions", "value")],
-    [State("collapseTable", "is_open")],
+    [State("homeCollapseTable", "is_open")],
 )
 def toggle_collapse(value, is_open):
     if value is not None:
-        if "Show Data" in value:
-            return not is_open
-    return is_open
+        if 1 in value:
+            return True
+    return False
 
 @app.callback(
     Output("homeGraphCard", "children"),
@@ -126,16 +127,12 @@ def toggle_collapse(value, is_open):
 )
 def showStatistics(value, data):
     if value is not None:
-        if "Show Graph Statistics" in value:
+        if 2 in value:
             stats = pd.DataFrame(data)["Mark"].describe()
             return dbc.CardBody(
                 [
-                    html.H4("Summary of Data", className="card-title"),
-                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
-                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
-                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
-                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
-                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                    html.H6("Summary of Data", className="card-subtitle"),
+                    html.P(f"Mean: {stats[1]:.2f}\nMedian: {stats[5]:.2f}\nStandard Deviation: {stats[2]:.2f}\nMinimum: {stats[3]:.2f}\nMaximum: {stats[7]:.2f}", className="card-text"),
                 ]
             )
     return ""
@@ -154,9 +151,11 @@ def updateSchoolDropdown(activeTab):
     Input("homeSchoolInput", "value"),
 )
 def updateFacultyDropdown(schoolInput):
-    faculties = db.session.query(Faculty.name).filter(School.id == Faculty.schoolID).filter(School.name == schoolInput).all()
-    faculties = sorted([faculty for sublist in faculties for faculty in sublist])
-    return faculties
+    if schoolInput is not None:
+        faculties = db.session.query(Faculty.name).filter(School.id == Faculty.schoolID).filter(School.name == schoolInput[0]).all()
+        faculties = sorted([faculty for sublist in faculties for faculty in sublist])
+        return faculties
+    return dash.no_update
 
 @app.callback(
     Output("homeTable", "data"),
@@ -174,7 +173,7 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
     columns = [{'name': str(x), 'id': str(x), 'deletable': False} for x in df.columns]
 
     if addClicks > 0:
-        tempFacultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput).filter(School.name == schoolInput).first()[0]
+        tempFacultyID = db.session.query(Faculty.id).filter(School.id == Faculty.schoolID).filter(Faculty.name == facultyInput[0]).filter(School.name == schoolInput[0]).first()[0]
 
         courseExists = db.session.query(Course.id).filter(Course.courseCode == courseInput).filter(Course.facultyID == tempFacultyID).first()
         if courseExists is not None:
@@ -189,7 +188,7 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
         mark = Mark(mark=gradeInput, courseID=tempCourseID)
         db.session.add(mark)
         db.session.commit()
-        df = df.append({"School": schoolInput, "Faculty": facultyInput, "Course": courseInput, "Mark": gradeInput}, ignore_index=True)
+        df = df.append({"School": schoolInput[0], "Faculty": facultyInput[0], "Course": courseInput, "Mark": gradeInput}, ignore_index=True)
 
     return df.to_dict('records'), columns, 0
 
@@ -200,7 +199,7 @@ def updateHomeTable(activeTab, addClicks, schoolInput, facultyInput, courseInput
 def display_graph(data):
     df = pd.DataFrame(data)
     fig = px.box(df, x="School", y="Mark", title="Grades by School", category_orders={"School": sorted(df['School'].unique())}, labels={"Mark": "Final Course Marks"})
-    return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF", title_color=colors["titleText"])
+    return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF")
 
 # @app.callback(
 #     Output("tabs", "active_tab"),

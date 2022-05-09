@@ -4,7 +4,6 @@ import plotly.express as px
 import pandas as pd
 import plotly.figure_factory as ff
 import dash_bootstrap_components as dbc
-import dash_mantine_components as dmc
 import re
 from app import app
 from models import School, Faculty, Course, Mark, db
@@ -23,7 +22,9 @@ school_layout = html.Div([
         ),
         dcc.Checklist(
             ["1st Year", "2nd Year", "3rd Year", "4th Year"],
-            id="courseYearFilter"),
+            id="courseYearFilter",
+            inputStyle={"margin-left": "10px", "margin-right": "5px"}
+        ),
     ]),
     dbc.Row([
         dbc.Col(
@@ -31,14 +32,14 @@ school_layout = html.Div([
                 placeholder="Filter by Faculty",
                 id="facultyFilter",
                 multi=True,
-                style={"width": "200px"}),
+                style={"width": "220px", "font-size": "12px", "text-align": "center"})
         ),
         dbc.Col(
             dcc.Dropdown([],
                 placeholder="Filter by Course Code",
                 id="courseNameFilter",
                 multi=True,
-                style={"width": "200px"}),
+                style={"width": "200px", "font-size": "12px"})
         ),
         dbc.Col(
             dbc.Button(
@@ -54,7 +55,7 @@ school_layout = html.Div([
 
         html.H5(
             children="Add Mark",
-            style={"color": colors["titleText"], "padding-top": "20px"}
+            style={"color": colors["titleText"], "padding-top": "15px"}
         ),
     dbc.Row([
         dbc.Col(
@@ -62,7 +63,7 @@ school_layout = html.Div([
                 placeholder="Select Faculty",
                 id="schoolFacultyInput",
                 multi=True,
-                style={"width": "200px"}
+                style={"width": "220px", "font-size": "12px", "text-align": "center"}
             ),
         ),
         dbc.Col(
@@ -70,7 +71,7 @@ school_layout = html.Div([
                 id="schoolCourseInput",
                 placeholder="Course Code",
                 value="",
-                style={"width": "150px"}
+                style={"width": "120px", "font-size": "12px"}
             ),
         ),
         dbc.Col(
@@ -78,7 +79,7 @@ school_layout = html.Div([
                 id="schoolGradeInput",
                 placeholder="Course Grade",
                 value='',
-                style={"width": "150px"}
+                style={"width": "120px", "font-size": "12px"}
             ),
         ),
         dbc.Col(
@@ -136,6 +137,8 @@ school_layout = html.Div([
             dbc.CardBody(""),
             className="mb-3",
             id="schoolGraphCard",
+            color=colors["background"],
+            style={"color": colors["text"], "white-space": "pre-line", "font-size": "12px"},
             inverse=True,
             outline=True,
         ),
@@ -147,6 +150,8 @@ school_layout = html.Div([
             dbc.CardBody(""),
             className="mb-3",
             id="schoolFacultyGraphCard",
+            color=colors["background"],
+            style={"color": colors["text"], "white-space": "pre-line", "font-size": "12px"},
             inverse=True,
             outline=True,
         ),
@@ -157,6 +162,8 @@ school_layout = html.Div([
             dbc.CardBody(""),
             className="mb-3",
             id="schoolCourseGraphCard",
+            color=colors["background"],
+            style={"color": colors["text"], "white-space": "pre-line", "font-size": "12px"},
             inverse=True,
             outline=True,
         ),
@@ -166,13 +173,13 @@ school_layout = html.Div([
 @app.callback(
     Output("schoolCollapseTable", "is_open"),
     [Input("schoolGraphOptions", "value")],
-    [State("collapseTable", "is_open")],
+    [State("schoolCollapseTable", "is_open")],
 )
 def toggle_collapse(value, is_open):
     if value is not None:
-        if "Show Data" in value:
-            return not is_open
-    return is_open
+        if 1 in value:
+            return True
+    return False
 
 @app.callback(
     Output("schoolFacultyInput", "options"),
@@ -210,18 +217,18 @@ def updateCourseNameFilter(activeTab, school):
     Input("schoolFacultyInput", "value"),
     Input("schoolCourseInput", "value"),
     Input("schoolGradeInput", "value"),
-    Input("school", "children")
+    Input("school", "children"),
 )
-def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, facultyFilter, faculties, courseNameFilter, courses, facultyInput, courseInput, gradeInput, school):
-    if (courseYearFilter != [] or courseNameFilter != "" or facultyFilter != "") and clearFilterClicks == 0:
+def updateSchoolTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, facultyFilter, faculties, courseNameFilter, courses, facultyInput, courseInput, gradeInput, school):
+    if (courseYearFilter != [] or courseNameFilter is not None or facultyFilter is not None) and clearFilterClicks == 0:
         if not courseYearFilter:
             courseYearFilter = [1,2,3,4]
         else:
             for i in range(len(courseYearFilter)):
                 courseYearFilter[i] = int(courseYearFilter[i][0])
-        if courseNameFilter == "":
+        if courseNameFilter is None:
             courseNameFilter = courses
-        if facultyFilter == [] or facultyFilter == "":
+        if facultyFilter is None or facultyFilter is None:
             facultyFilter = faculties
         returnData = pd.DataFrame(db.session.query(School.name, Faculty.name, Course.courseCode, Mark.mark).filter(Mark.courseID == Course.id).filter(Course.facultyID == Faculty.id).filter(Faculty.schoolID == School.id).filter(School.name == school).filter(Faculty.name.in_(facultyFilter)).filter(Course.courseCode.in_(courseNameFilter)).filter(Course.yearLevel.in_(courseYearFilter)).all(), columns=["School", "Faculty", "Course", "Mark"])
         if returnData.empty:
@@ -258,8 +265,8 @@ def updateHomeTable(activeTab, clearFilterClicks, addClicks, courseYearFilter, f
 )
 def clearFilters(clearClicks):
     if clearClicks > 0:
-        return 0, "", [], ""
-    return 0, "", [], ""
+        return 0, None, [], None
+    return 0, None, [], None
 
 @app.callback(
     Output("schoolGraph", "figure"),
@@ -283,16 +290,14 @@ def displayMainGraph(data, school):
 )
 def showSchoolStatistics(value, data):
     if value is not None:
-        if "Show Statistics" in value:
+        if 2 in value:
             stats = pd.DataFrame(data)["Mark"].describe()
             return dbc.CardBody(
                 [
-                    html.H4("Summary of Data", className="card-title"),
-                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
-                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
-                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
-                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
-                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                    html.H6("Summary of Data", className="card-subtitle"),
+                    html.P(
+                        f"Mean: {stats[1]:.2f}\nMedian: {stats[5]:.2f}\nStandard Deviation: {stats[2]:.2f}\nMinimum: {stats[3]:.2f}\nMaximum: {stats[7]:.2f}",
+                        className="card-text"),
                 ]
             )
     return ""
@@ -302,23 +307,24 @@ def showSchoolStatistics(value, data):
     [Input("schoolGraph", "clickData"),
     Input("schoolTable", "data"),
     Input("facultyFilter", "value"),
-    Input("school", "children")]
+    Input("school", "children"),
+    Input("clearFilterButton", "n_clicks"),
+    ]
 )
-def displayFacultyGraph(clickData, data, facultyFilter, school):
+def displayFacultyGraph(clickData, data, facultyFilter, school, clearFilterClicks):
     df = pd.DataFrame(data)
-    if df.empty:
+    if clearFilterClicks != 0 or df.empty:
         return {}
     if clickData is not None:
         faculty = clickData["points"][0]["x"]
         df = df.loc[df["Faculty"] == faculty]
         fig = px.box(df, x="Course", y="Mark", category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {faculty}, {school}", labels={"mark": "Final Course Marks"})
         return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue", font_color="#90E0EF")
-
-    if facultyFilter != "":
-        fig = px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {df['Course'].unique().tolist()[0]}, {school}", labels={"mark": "Final Course Marks"})
+    if facultyFilter is not None:
+        fig = px.box(df, x="Course", y="Mark",  category_orders={"Course": sorted(df['Course'].unique())}, title=f"Grade Distribution By Course - {df['Faculty'].unique().tolist()[0]}, {school}", labels={"mark": "Final Course Marks"})
         return fig.update_layout(paper_bgcolor="#001D3D", plot_bgcolor="#CAF0F8", font_family="Epilogue",
                                  font_color="#90E0EF")
-    return {}
+    return dash.no_update
 
 @app.callback(
     Output("schoolFacultyGraphCard", "children"),
@@ -327,19 +333,15 @@ def displayFacultyGraph(clickData, data, facultyFilter, school):
     Input("schoolTable", "data")
 )
 def showFacultyStatistics(value, figure, data):
-    if value is not None and figure != {}:
-        if "Show Statistics" in value:
+    if value is not None and figure is not None:
+        if 2 in value:
             courses = list(set(figure["data"][0]["x"]))
             df = pd.DataFrame(data)
             stats = df.loc[df["Course"].isin(courses)]["Mark"].describe()
             return dbc.CardBody(
                 [
-                    html.H4("Summary of Data", className="card-title"),
-                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
-                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
-                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
-                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
-                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                    html.H6("Summary of Data", className="card-subtitle"),
+                    html.P(f"Mean: {stats[1]:.2f}\nMedian: {stats[5]:.2f}\nStandard Deviation: {stats[2]:.2f}\nMinimum: {stats[3]:.2f}\nMaximum: {stats[7]:.2f}", className="card-text"),
                 ]
             )
     return ""
@@ -350,11 +352,12 @@ def showFacultyStatistics(value, figure, data):
     Input("schoolFacultyGraph", "clickData"),
     Input("schoolTable", "data"),
     Input("courseNameFilter", "value"),
-    Input("school", "children")
+    Input("school", "children"),
+    Input("clearFilterButton", "n_clicks"),
 )
-def displayCourseGraph(figure, clickData, data, courseFilter, school):
+def displayCourseGraph(figure, clickData, data, courseFilter, school, clearFilterClicks):
     df = pd.DataFrame(data)
-    if df.empty:
+    if clearFilterClicks != 0 or df.empty:
         return {}
     if courseFilter != "":
         fig = ff.create_distplot([df["Mark"]], [df["Course"].iloc[0]], bin_size=3).update_layout(title_text=f"{df['Course'].iloc[0]} Grade Distribution - {df['Faculty'].iloc[0]}, {school}")
@@ -378,7 +381,7 @@ def displayCourseGraph(figure, clickData, data, courseFilter, school):
                         originalData.pop(k)
                 originalCourse.remove(course)
                 if len(originalCourse) == 0:
-                    return {}
+                    return dash.no_update
             else:
                 originalData.append(df.loc[df["Course"] == course]["Mark"].tolist())
                 originalCourse.append(course)
@@ -394,20 +397,15 @@ def displayCourseGraph(figure, clickData, data, courseFilter, school):
     Input("schoolTable", "data")
 )
 def showCourseStatistics(value, figure, data):
-    if value is not None and figure != {}:
-        if "Show Statistics" in value:
+    if value is not None and figure is not None:
+        if 2 in value:
             courses = figure["layout"]["title"]["text"].split(" Grade", 1)[0].replace("'", "").replace("{", "").replace("}", "").split(", ")
-            print(courses)
             df = pd.DataFrame(data)
             stats = df.loc[df["Course"].isin(courses)]["Mark"].describe()
             return dbc.CardBody(
                 [
-                    html.H4("Summary of Data", className="card-title"),
-                    html.H6(f"Mean:{stats[1]:.2f}", className="card-subtitle"),
-                    html.H6(f"Median:{stats[5]:.2f}", className="card-subtitle"),
-                    html.H6(f"Standard Deviation:{stats[2]:.2f}", className="card-subtitle"),
-                    html.H6(f"Minimum:{stats[3]:.2f}", className="card-subtitle"),
-                    html.H6(f"Maximum:{stats[7]:.2f}", className="card-subtitle"),
+                    html.H6("Summary of Data", className="card-subtitle"),
+                    html.P(f"Mean: {stats[1]:.2f}\nMedian: {stats[5]:.2f}\nStandard Deviation: {stats[2]:.2f}\nMinimum: {stats[3]:.2f}\nMaximum: {stats[7]:.2f}", className="card-text")
                 ]
             )
     return ""
