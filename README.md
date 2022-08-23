@@ -1,0 +1,1 @@
+An interactive Dash web app that permanently stores user entered grades for various Ontario universities and dynamically displays the data through multiple tabs with various summarization levels, cross-filtering, and interactive graphs.
